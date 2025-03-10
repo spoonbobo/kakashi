@@ -19,8 +19,16 @@
   }
 }
 
+@font-face {
+  font-family: 'FantasqueSansM Nerd Font';
+  src: url('/fonts/FantasqueSansMNF-Regular.woff') format('woff'),
+       url('/fonts/FantasqueSansMNF-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'FantasqueSansM Nerd Font';
 }
