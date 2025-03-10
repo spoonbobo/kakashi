@@ -35,14 +35,14 @@ export default function Home() {
       minH="100vh"
     >
       <Navbar />
-      <Box textAlign="center" boxShadow="md" p={6} bg="white" borderRadius="md">
-        <Heading as="h1" size="2xl" color="blue.600" mb={4}>
-          {greeting === 'Loading...' ? <Spinner size="xl" /> : greeting}
-        </Heading>
-        <Text fontSize="lg" color="gray.600">
-          Welcome to our application. Explore the features and enjoy your stay!
-        </Text>
-      </Box>
+        <Box textAlign="center" boxShadow="md" p={6} bg="white" borderRadius="md">
+          <Heading as="h1" size="2xl" color="blue.600" mb={4}>
+            {greeting === 'Loading...' ? <Spinner size="xl" /> : greeting}
+          </Heading>
+          <Text fontSize="lg" color="gray.600">
+            Welcome to our application. Explore the features and enjoy your stay!
+          </Text>
+        </Box>
     </Flex>
   );
 }

@@ -1,6 +1,6 @@
 import { Box, HStack, Link, Text, Icon, Flex } from '@chakra-ui/react';
 import { FaHome, FaCog, FaSignOutAlt } from 'react-icons/fa';
-
+import { LoginPopover } from '../login_popover';
 export default function Navbar() {
     return (
         <Box
@@ -32,44 +32,30 @@ export default function Navbar() {
                     <Text fontSize="xl" fontWeight="bold">M</Text>
                 </Box>
                 <Text fontSize="2xl" fontWeight="bold">
-                    MyApp
+                    Kakashi
                 </Text>
             </Flex>
 
             {/* Navigation Links */}
-            <HStack spacing={6}>
+            <HStack>
                 <NavItem icon={FaHome} href="#" isActive>
-                    Chat
-                </NavItem>
-                <NavItem icon={FaCog} href="#">
-                    Settings
+                    Home
                 </NavItem>
             </HStack>
 
             {/* User Profile and Logout */}
             <Flex align="center">
-                <Box
-                    w="32px"
-                    h="32px"
-                    bg="blue.500"
-                    mr={3}
-                    borderRadius="full"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                >
-                    <Text fontSize="sm">JD</Text>
-                </Box>
-                <NavItem icon={FaSignOutAlt} href="#">
-                    Logout
+                <NavItem icon={FaCog} href="#">
+                    Settings
                 </NavItem>
+                <LoginPopover />
             </Flex>
         </Box>
     );
 }
 
 // Reusable NavItem component
-function NavItem({ icon, href, children, isActive = false }) {
+function NavItem({ icon, href, children, isActive = false }: { icon: React.ElementType; href: string; children: React.ReactNode; isActive?: boolean }) {
     return (
         <Link
             href={href}
