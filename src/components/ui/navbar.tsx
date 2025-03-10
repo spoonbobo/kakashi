@@ -1,10 +1,10 @@
 import { Box, HStack, Link, Text, Icon, Flex } from '@chakra-ui/react';
-import { FaHome, FaCog, FaSignOutAlt, FaComment } from 'react-icons/fa';
+import { FaCog, FaComment } from 'react-icons/fa';
 import { AuthPopover } from './popover/auth_popover';
 import { useAuth } from '@/auth/context';
 
 export default function Navbar() {
-
+    const { isAuthenticated } = useAuth();
     return (
         <Box
             as="nav"
@@ -20,33 +20,18 @@ export default function Navbar() {
             alignItems="center"
             justifyContent="space-between"
         >
-            {/* Logo Section */}
             <Flex align="center">
-                <Box
-                    w="40px"
-                    h="40px"
-                    bg="blue.500"
-                    mr={3}
-                    borderRadius="md"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                >
-                    <Text fontSize="xl" fontWeight="bold">M</Text>
-                </Box>
                 <Text fontSize="2xl" fontWeight="bold">
                     Kakashi
                 </Text>
             </Flex>
 
-            {/* Navigation Links */}
             <HStack>
                 <NavItem icon={FaComment} href="#" isActive>
                     Chat
                 </NavItem>
             </HStack>
 
-            {/* User Profile and Logout */}
             <Flex align="center">
                 <NavItem icon={FaCog} href="#">
                     Settings
