@@ -1,11 +1,16 @@
+
+
 import { Provider } from "@/components/ui/provider"
+import { AuthProvider } from "@/auth/context"
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   const { children } = props
   return (
     <html suppressHydrationWarning>
       <body>
-        <Provider>{children}</Provider>
+        <AuthProvider>
+          <Provider>{children}</Provider>
+        </AuthProvider>
       </body>
     </html>
   )

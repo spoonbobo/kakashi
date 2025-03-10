@@ -1,7 +1,10 @@
 import { Box, HStack, Link, Text, Icon, Flex } from '@chakra-ui/react';
-import { FaHome, FaCog, FaSignOutAlt } from 'react-icons/fa';
-import { LoginPopover } from '../login_popover';
+import { FaHome, FaCog, FaSignOutAlt, FaComment } from 'react-icons/fa';
+import { AuthPopover } from './popover/auth_popover';
+import { useAuth } from '@/auth/context';
+
 export default function Navbar() {
+
     return (
         <Box
             as="nav"
@@ -38,8 +41,8 @@ export default function Navbar() {
 
             {/* Navigation Links */}
             <HStack>
-                <NavItem icon={FaHome} href="#" isActive>
-                    Home
+                <NavItem icon={FaComment} href="#" isActive>
+                    Chat
                 </NavItem>
             </HStack>
 
@@ -48,7 +51,7 @@ export default function Navbar() {
                 <NavItem icon={FaCog} href="#">
                     Settings
                 </NavItem>
-                <LoginPopover />
+                <AuthPopover />
             </Flex>
         </Box>
     );
