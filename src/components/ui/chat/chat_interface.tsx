@@ -205,7 +205,7 @@ export const ChatInterface = () => {
         <Flex
           direction="column"
           alignItems="stretch"
-          bg="gray.50"
+          bg="gray.10"
           borderRadius="lg"
           p={4}
         >

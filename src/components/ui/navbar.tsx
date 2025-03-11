@@ -1,15 +1,15 @@
-import { Box, HStack, Link, Text, Icon, Flex } from '@chakra-ui/react';
+import { Box, HStack, Link, Text, Icon, Flex, IconButton} from '@chakra-ui/react';
+import { Tooltip } from "@/components/ui/tooltip"
 import { FaCog, FaComment, FaCheck , FaTasks } from 'react-icons/fa';
 import { AuthPopover } from './popover/auth_popover';
-import { useAuth } from '@/auth/context';
-import { SimplePopover } from './popover/simple_popover';
 
 export default function Navbar() {
-    const { isAuthenticated } = useAuth();
     return (
         <Box
             as="nav"
             position="fixed"
+            zIndex={1000}
+            h="50px"
             top={0}
             left={0}
             w="100%"
@@ -28,38 +28,55 @@ export default function Navbar() {
             </Flex>
 
             <HStack>
-                <NavItem icon={FaComment} href="#">
-                    <SimplePopover title="History" />
-                </NavItem>
-                <NavItem icon={FaCheck} href="#">
-                    <SimplePopover title="Approval" />
-                </NavItem>
+                <Tooltip content="Messages">
+                    <IconButton
+                       bg="transparent"
+                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                       aria-label="Messages"
+                    >
+                        <Icon as={FaComment} />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip content="Tasks">
+                    <IconButton
+                       bg="transparent"
+                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                       aria-label="Tasks"
+                    >
+                        <Icon as={FaTasks} />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip content="Approvals">
+                    <IconButton
+                       bg="transparent"
+                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                       aria-label="Completed"
+                    >
+                        <Icon as={FaCheck} />
+                    </IconButton>
+                </Tooltip>
             </HStack>
 
             <Flex align="center">
-                <NavItem icon={FaCog} href="#">
-                    Settings
-                </NavItem>
+                <Tooltip content="Settings">
+                    <IconButton
+                        bg="transparent"
+                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                        aria-label="Settings"
+                    >
+                        <Icon as={FaCog} />
+                    </IconButton>
+                </Tooltip>
                 <AuthPopover />
             </Flex>
         </Box>
-    );
-}
-
-// Reusable NavItem component
-function NavItem({ icon, href, children, isActive = false }: { icon: React.ElementType; href: string; children: React.ReactNode; isActive?: boolean }) {
-    return (
-        <Link
-            href={href}
-            _hover={{ textDecoration: 'none', bg: 'transparent' }}
-            p={2}
-            borderRadius="md"
-            bg={isActive ? 'white' : 'transparent'}
-            display="flex"
-            alignItems="center"
-        >
-            <Icon as={icon} mr={2} />
-            <Text as="span" fontSize="md">{children}</Text>
-        </Link>
     );
 }
