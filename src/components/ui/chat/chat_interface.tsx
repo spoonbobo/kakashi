@@ -1,5 +1,4 @@
 import { Box, Text, Input, Flex, VStack, IconButton } from "@chakra-ui/react";
-import { Avatar } from "@heroui/avatar";
 import { useAuth } from "@/auth/context";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
@@ -16,17 +15,21 @@ interface Message {
   isStreaming?: boolean;
 }
 
+interface ChatInterfaceProps {
+  initialSessionId?: string;
+}
+
 const messageVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
   visible: { opacity: 1, y: 0, scale: 1 },
   exit: { opacity: 0, y: -20, scale: 0.95 }
 };
 
-export const ChatInterface = () => {
+export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
   const { isAuthenticated } = useAuth();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<number | null>(initialSessionId ? Number(initialSessionId) : null);
   const [isSending, setIsSending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -87,7 +90,7 @@ export const ChatInterface = () => {
     }
   };
 
-  const sendMessage = (sessionId: number) => {
+  const sendMessage = (sessionId: number | string) => {
     setIsSending(true);
 
     const newMessage: Message = {

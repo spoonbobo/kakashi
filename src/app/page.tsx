@@ -8,11 +8,74 @@ import AgentDialogPanel from '../components/ui/panel/agent_dialog_panel';
 import { ChatInterface } from '../components/ui/chat/chat_interface';
 import { ResizableLayoutV } from '@/components/ui/stretch/resizeable_layoutV';
 import { ResizableLayoutH } from '@/components/ui/stretch/resizeable_layoutH';
+import { Conversations } from '../components/ui/chat/chat_history';
+import { Tasks } from '../components/ui/tasks/task_history';
+import { Approvals } from '../components/ui/approvals/approval_history';
 import "./globals.css"
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
   const [time, setTime] = useState<string>('');
+  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'approvals' | 'conversations'>('chat');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const view = urlParams.get('view');
+      const session = urlParams.get('session');
+
+      if (view === 'chat' && session) {
+        setActiveView('chat');
+        setSessionId(session);
+      } else {
+        setActiveView('conversations');
+        setSessionId(null);
+      }
+    };
+
+    handleRouteChange();
+
+    window.addEventListener('popstate', handleRouteChange);
+
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleSessionChange = (event: CustomEvent) => {
+      setActiveView('chat');
+      setSessionId(event.detail);
+    };
+
+    window.addEventListener('sessionChange', handleSessionChange as EventListener);
+
+    return () => {
+      window.removeEventListener('sessionChange', handleSessionChange as EventListener);
+    };
+  }, []);
+
+
+  const handleConversationsClick = () => {
+    window.history.pushState({}, '', '/?view=conversations');
+    setActiveView('conversations');
+    setSessionId(null);
+  };
+
+  const handleNewChatClick = () => {
+    window.history.pushState({}, '', '/?view=chat');
+    setActiveView('chat');
+    setSessionId(null);
+  };
+
+  const handleTasksClick = () => {
+    setActiveView('tasks');
+  };
+
+  const handleApprovalsClick = () => {
+    setActiveView('approvals');
+  };
 
   useEffect(() => {
     async function fetchGreeting() {
@@ -39,7 +102,12 @@ export default function Home() {
       position="relative"
       minH="100vh"
     >
-      <Navbar />
+      <Navbar 
+        onConversationsClick={handleConversationsClick}
+        onNewChatClick={handleNewChatClick}
+        onTasksClick={handleTasksClick}
+        onApprovalsClick={handleApprovalsClick}
+      />
       
       <Box 
         position="absolute"
@@ -57,7 +125,13 @@ export default function Home() {
         overflow="hidden"
       >
        <ResizableLayoutV
-            leftComponent={<ChatInterface />}
+            leftComponent={
+              activeView === 'chat' ? <ChatInterface initialSessionId={sessionId ? sessionId : undefined} /> :
+              activeView === 'tasks' ? <Tasks /> :
+              activeView === 'approvals' ? <Approvals /> :
+              activeView === 'conversations' ? <Conversations /> :
+              <ChatInterface initialSessionId={sessionId ? sessionId : undefined} />
+            }
             rightComponent={
             <ResizableLayoutH
               topComponent={<AgentDialogPanel title="Progress" />}

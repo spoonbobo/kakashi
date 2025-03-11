@@ -3,7 +3,20 @@ import { Tooltip } from "@/components/ui/tooltip"
 import { FaCog, FaComment, FaCheck , FaTasks, FaPlus } from 'react-icons/fa';
 import { AuthPopover } from './popover/auth_popover';
 
-export default function Navbar() {
+interface NavbarProps {
+    onConversationsClick: () => void;
+    onNewChatClick: () => void;
+    onTasksClick: () => void;
+    onApprovalsClick: () => void;
+}
+
+export default function Navbar( { 
+    onConversationsClick, 
+    onNewChatClick, 
+    onTasksClick, 
+    onApprovalsClick 
+}: NavbarProps ) {
+
     return (
         <Box
             as="nav"
@@ -35,6 +48,7 @@ export default function Navbar() {
                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
                        aria-label="New Chat"
+                       onClick={onNewChatClick}
                     >
                         <Icon as={FaPlus} />
                     </IconButton>
@@ -47,6 +61,7 @@ export default function Navbar() {
                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
                        aria-label="Conversations"
+                       onClick={onConversationsClick}
                     >
                         <Icon as={FaComment} />
                     </IconButton>
@@ -58,6 +73,7 @@ export default function Navbar() {
                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
                        aria-label="Tasks"
+                       onClick={onTasksClick}
                     >
                         <Icon as={FaTasks} />
                     </IconButton>
@@ -69,6 +85,7 @@ export default function Navbar() {
                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
                        aria-label="Completed"
+                       onClick={onApprovalsClick}
                     >
                         <Icon as={FaCheck} />
                     </IconButton>
