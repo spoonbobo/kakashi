@@ -21,7 +21,7 @@ export const DialogBox = ({ item }: DialogBoxProps) => {
             alignItems="center"
         >
             {typeof item.message === 'string' ? (
-                <Text>{item.message}</Text>
+                <Text>Task: {item.message}</Text>
             ) : (
                 item.message
             )}

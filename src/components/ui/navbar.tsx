@@ -1,6 +1,6 @@
 import { Box, HStack, Text, Icon, Flex, IconButton} from '@chakra-ui/react';
 import { Tooltip } from "@/components/ui/tooltip"
-import { FaCog, FaComment, FaCheck , FaTasks, FaPlus } from 'react-icons/fa';
+import { FaCog, FaComment, FaCheck , FaTasks, FaPlus, FaQuestionCircle, FaDiscord, FaSpeakerDeck, FaAngleDoubleDown, FaAviato, FaDiagnoses } from 'react-icons/fa';
 import { AuthPopover } from './popover/auth_popover';
 
 interface NavbarProps {
@@ -8,13 +8,17 @@ interface NavbarProps {
     onNewChatClick: () => void;
     onTasksClick: () => void;
     onApprovalsClick: () => void;
+    onHelpClick: () => void;
+    onFeedbackClick: () => void;
 }
 
 export default function Navbar( { 
     onConversationsClick, 
     onNewChatClick, 
     onTasksClick, 
-    onApprovalsClick 
+    onApprovalsClick,
+    onHelpClick,
+    onFeedbackClick
 }: NavbarProps ) {
 
     return (
@@ -90,9 +94,33 @@ export default function Navbar( {
                         <Icon as={FaCheck} />
                     </IconButton>
                 </Tooltip>
+                <Tooltip content="Forum">
+                    <IconButton
+                       bg="transparent"
+                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                       aria-label="Forum"
+                    //    onClick={onForumClick}
+                    >
+                        <Icon as={FaDiagnoses} />
+                    </IconButton>
+                </Tooltip>
             </HStack>
 
             <Flex align="center">
+                <Tooltip content="Help">
+                    <IconButton
+                       bg="transparent"
+                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                       aria-label="Help"
+                       onClick={onApprovalsClick}
+                    >
+                        <Icon as={FaQuestionCircle} />
+                    </IconButton>
+                </Tooltip>
                 <Tooltip content="Settings">
                     <IconButton
                         bg="transparent"

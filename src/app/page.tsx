@@ -11,13 +11,15 @@ import { ResizableLayoutH } from '@/components/ui/stretch/resizeable_layoutH';
 import { Conversations } from '../components/ui/chat/chat_history';
 import { Tasks } from '../components/ui/tasks/task_history';
 import { Approvals } from '../components/ui/approvals/approval_history';
+import TaskInspector from '../components/ui/panel/task_inspector';
 import "./globals.css"
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
   const [time, setTime] = useState<string>('');
-  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'approvals' | 'conversations'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'approvals' | 'conversations' | 'help' | 'feedback'>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -78,6 +80,14 @@ export default function Home() {
     setActiveView('approvals');
   };
 
+  const handleHelpClick = () => {
+    setActiveView('help');
+  };
+
+  const handleFeedbackClick = () => {
+    setActiveView('feedback');
+  };
+
   useEffect(() => {
     async function fetchGreeting() {
       try {
@@ -108,6 +118,8 @@ export default function Home() {
         onNewChatClick={handleNewChatClick}
         onTasksClick={handleTasksClick}
         onApprovalsClick={handleApprovalsClick}
+        onHelpClick={handleHelpClick}
+        onFeedbackClick={handleFeedbackClick}
       />
       
       <Box 
@@ -135,8 +147,8 @@ export default function Home() {
             }
             rightComponent={
             <ResizableLayoutH
-              topComponent={<AgentTaskPanel title="Task" dummyRowNumber={5} />}
-              bottomComponent={<AgentTaskPanel title="Inspector" dummyRowNumber={2} />}
+              topComponent={<AgentTaskPanel title="Task" onTaskSelect={setSelectedTask} />}
+              bottomComponent={<TaskInspector title="Inspector" task={selectedTask} />}
               />}
             initialLeftWidth="75%"
         />

@@ -210,116 +210,121 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
   }
 
   return (
-    <MotionBox
-      width="100%"
-      height="100%"
-      p={4}
-      pl={0}
-      borderRadius="0"
-      boxShadow="sm"
-      display="flex"
-      flexDirection="column"
-      justifyContent="space-between"
-      alignItems="stretch"
-      overflowY="auto"
-      initial={{ opacity: 0, x: -50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -50 }}
-      transition={{ 
-        duration: 0.7,
-        x: { type: "spring", stiffness: 300, damping: 30 }
-      }}
-    >
-      <VStack 
-        align="stretch" 
-        flex="1" 
-        overflowY="auto" 
-        mb={2}
-        gap={4}
-        p={2}
-        px={30}
-        ref={scrollContainerRef}
-      >
-        <Text fontSize="md" mb={2}>
-          Total Messages: {messages.length} sessionId: {sessionId}
+    <Flex direction="column" width="100%" height="100%" overflow="hidden">
+      <Flex direction="column" px={6} py={4} borderBottom="1px solid" borderColor="gray.200">
+        <Text fontSize="xl" fontWeight="bold">
+          Chat Session {sessionId ? `#${sessionId}` : '(New Session)'}
         </Text>
-        <AnimatePresence initial={false}>
-          {messages.map((msg) => (
-            <MotionFlex
-              key={msg.id}
-              alignSelf={msg.sender === 'user' ? 'flex-end' : 'flex-start'}
-              maxWidth="80%"
-              variants={messageVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              transition={{ duration: 0.2 }}
-              flexDirection="column"
-            >
-              <Text 
-                fontSize="sm" 
-                color={msg.sender === 'user' ? 'blue.500' : 'gray.500'} 
-                mb={1}
-                alignSelf={msg.sender === 'user' ? 'flex-end' : 'flex-start'}
-              >
-                {msg.sender === 'bot' ? 'Agent' : 'You'}
-              </Text>
-              <Box
-                bg={msg.sender === 'user' ? 'blue.500' : 'gray.100'}
-                color={msg.sender === 'user' ? 'white' : 'gray.800'}
-                px={4}
-                py={2}
-                borderRadius="lg"
-                boxShadow="sm"
-              >
-                <Text>{msg.text}{msg.isStreaming && "▋"}</Text>
-                <Text 
-                  fontSize="xs" 
-                  color={msg.sender === 'user' ? 'whiteAlpha.700' : 'gray.500'}
-                  textAlign="right"
-                  mt={1}
-                >
-                  {msg.timestamp.toLocaleTimeString()}
-                </Text>
-              </Box>
-            </MotionFlex>
-          ))}
-        </AnimatePresence>
-        <Box ref={messagesEndRef} />
-      </VStack>
+      </Flex>
 
-      <Box width="100%" pt={2} mb={4} px={30}>
-        <Flex
-          direction="column"
-          alignItems="stretch"
-          bg="gray.10"
-          borderRadius="lg"
-          p={4}
+      <MotionBox
+        flex="1"
+        p={4}
+        pl={0}
+        borderRadius="0"
+        boxShadow="sm"
+        display="flex"
+        flexDirection="column"
+        justifyContent="space-between"
+        alignItems="stretch"
+        overflowY="auto"
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -50 }}
+        transition={{ 
+          duration: 0.7,
+          x: { type: "spring", stiffness: 300, damping: 30 }
+        }}
+      >
+        <VStack 
+          align="stretch" 
+          flex="1" 
+          overflowY="auto" 
+          mb={2}
+          gap={4}
+          p={2}
+          px={30}
+          ref={scrollContainerRef}
         >
-          <Input
-            placeholder="Type your message..."
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            mb={2}
-            height="40px"
-            disabled={!isAuthenticated || isSending || isStreaming}
-            borderRadius="full"
-          />
-          <Box alignSelf="flex-end">
-            <IconButton
-              aria-label="Send message"
-              onClick={handleSendMessage}
+
+          <AnimatePresence initial={false}>
+            {messages.map((msg) => (
+              <MotionFlex
+                key={msg.id}
+                alignSelf={msg.sender === 'user' ? 'flex-end' : 'flex-start'}
+                maxWidth="80%"
+                variants={messageVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={{ duration: 0.2 }}
+                flexDirection="column"
+              >
+                <Text 
+                  fontSize="sm" 
+                  color={msg.sender === 'user' ? 'blue.500' : 'gray.500'} 
+                  mb={1}
+                  alignSelf={msg.sender === 'user' ? 'flex-end' : 'flex-start'}
+                >
+                  {msg.sender === 'bot' ? 'Agent' : 'You'}
+                </Text>
+                <Box
+                  bg={msg.sender === 'user' ? 'blue.500' : 'gray.100'}
+                  color={msg.sender === 'user' ? 'white' : 'gray.800'}
+                  px={4}
+                  py={2}
+                  borderRadius="lg"
+                  boxShadow="sm"
+                >
+                  <Text>{msg.text}{msg.isStreaming && "▋"}</Text>
+                  <Text 
+                    fontSize="xs" 
+                    color={msg.sender === 'user' ? 'whiteAlpha.700' : 'gray.500'}
+                    textAlign="right"
+                    mt={1}
+                  >
+                    {msg.timestamp.toLocaleTimeString()}
+                  </Text>
+                </Box>
+              </MotionFlex>
+            ))}
+          </AnimatePresence>
+          <Box ref={messagesEndRef} />
+        </VStack>
+
+        <Box width="100%" pt={2} mb={4} px={30}>
+          <Flex
+            direction="column"
+            alignItems="stretch"
+            bg="gray.10"
+            borderRadius="lg"
+            p={4}
+          >
+            <Input
+              placeholder="Type your message..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              mb={2}
+              height="40px"
               disabled={!isAuthenticated || isSending || isStreaming}
-              colorScheme="blue"
-              size="sm"
               borderRadius="full"
-            >
-              <FaPaperPlane />  
-            </IconButton>
-          </Box>
-        </Flex>
-      </Box>
-    </MotionBox>
+            />
+            <Box alignSelf="flex-end">
+              <IconButton
+                aria-label="Send message"
+                onClick={handleSendMessage}
+                disabled={!isAuthenticated || isSending || isStreaming}
+                colorScheme="blue"
+                size="sm"
+                borderRadius="full"
+              >
+                <FaPaperPlane />  
+              </IconButton>
+            </Box>
+          </Flex>
+        </Box>
+      </MotionBox>
+    </Flex>
   );
 };

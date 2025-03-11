@@ -1,31 +1,38 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, VStack, Text } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/auth/context';
-import { DialogBox } from '@/components/ui/box/dialog_box';
+import { TaskBox } from '@/components/ui/box/task_box';
 
-interface AgentDialogPanelProps {
+interface AgentTaskPanelProps {
   title?: string;
-  data?: Array<{
-    id: string;
-    message: string;
-  }>;
-  dummyRowNumber?: number;
+  onTaskSelect: (task: any) => void;
 }
 
 const MotionBox = motion(Box);
 
-const AgentTaskPanel: React.FC<AgentDialogPanelProps> = ({ 
+const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({ 
   title = "Agent Dialog", 
-  data = Array(15).fill(null).map((_, i) => ({ id: i.toString(), message: `Row ${i + 1}` })),
-  dummyRowNumber = 15,
+  onTaskSelect
 }) => {
+  const [tasks, setTasks] = useState<any[]>([]);
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return null;
   }
 
+  const fetchRecentTasks = async () => {
+    const res = await fetch(`/api/task/get_recent_task`);
+    if (!res.ok) throw new Error("Failed to fetch recent tasks");
+    const data = await res.json();
+    setTasks(data.tasks || data);
+  };
+
+  useEffect(() => {
+    fetchRecentTasks();
+  }, []);
+  
   return (
     <MotionBox
       width="100%"
@@ -48,8 +55,8 @@ const AgentTaskPanel: React.FC<AgentDialogPanelProps> = ({
       </Text>
       
       <VStack align="stretch" height="calc(100% - 70px)">
-        {data.slice(0, dummyRowNumber).map((item) => (
-          <DialogBox key={item.id} item={item} />
+        {tasks.map((item) => (
+          <TaskBox key={item.id} item={item} onClick={() => onTaskSelect(item)} />
         ))}
       </VStack>
     </MotionBox>
