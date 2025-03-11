@@ -1,7 +1,8 @@
 import { Box, HStack, Link, Text, Icon, Flex } from '@chakra-ui/react';
-import { FaCog, FaComment } from 'react-icons/fa';
+import { FaCog, FaComment, FaCheck , FaTasks } from 'react-icons/fa';
 import { AuthPopover } from './popover/auth_popover';
 import { useAuth } from '@/auth/context';
+import { SimplePopover } from './popover/simple_popover';
 
 export default function Navbar() {
     const { isAuthenticated } = useAuth();
@@ -27,8 +28,14 @@ export default function Navbar() {
             </Flex>
 
             <HStack>
-                <NavItem icon={FaComment} href="#" isActive>
-                    Chat
+                <NavItem icon={FaComment} href="#">
+                    <SimplePopover title="History" />
+                </NavItem>
+                <NavItem icon={FaTasks} href="#">
+                    <SimplePopover title="Tasks" />
+                </NavItem>
+                <NavItem icon={FaCheck} href="#">
+                    <SimplePopover title="Approval" />
                 </NavItem>
             </HStack>
 
@@ -47,10 +54,10 @@ function NavItem({ icon, href, children, isActive = false }: { icon: React.Eleme
     return (
         <Link
             href={href}
-            _hover={{ textDecoration: 'none', bg: 'blue.700' }}
+            _hover={{ textDecoration: 'none', bg: 'transparent' }}
             p={2}
             borderRadius="md"
-            bg={isActive ? 'blue.700' : 'transparent'}
+            bg={isActive ? 'white' : 'transparent'}
             display="flex"
             alignItems="center"
         >

@@ -20,15 +20,12 @@ export default function WelcomeBox({ greeting }: WelcomeBoxProps) {
           p={6}
           bg="white"
           borderRadius="md"
-        //   position="fixed"
           width="300px"
+          minHeight="150px"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.8 }}
           transition={{ duration: 0.5, ease: 'easeInOut' }}
-          left="50%"
-          top="50%"
-          transform="translate(-50%, -50%)"
           zIndex={1000}
         >
           <Text as="h1" fontSize="2xl" color="blue.600" mb={4}>

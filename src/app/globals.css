@@ -30,5 +30,13 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Ubuntu, Arial, 'FantasqueSansM Nerd Font';
+  font-family: 'FantasqueSansM Nerd Font';
+}
+
+.chakra-ui-light {
+  background-color: #f0f2f5;
+}
+
+.chakra-ui-dark {
+  background-color: #171717;
 }

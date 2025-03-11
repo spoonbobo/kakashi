@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Box, VStack, Text } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/auth/context';
-import { handleDragStart } from '@/utilities/left_drag';
 import { DialogBox } from '@/components/ui/box/dialog_box';
 
 interface AgentDialogPanelProps {
@@ -25,54 +24,33 @@ const AgentDialogPanel: React.FC<AgentDialogPanelProps> = ({
   data = Array(15).fill(null).map((_, i) => ({ id: i.toString(), message: `Row ${i + 1}` })),
   navbarHeight = "80px",
   bottomMargin = "40px",
-  initialWidth = "25%",
-  minWidth = "200px",
-  maxWidth = "50%"
 }) => {
   const { isAuthenticated } = useAuth();
-  const [width, setWidth] = useState(initialWidth);
   const [isDragging, setIsDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Convert percentage to pixels for initial width
-  useEffect(() => {
-    if (initialWidth.includes('%') && panelRef.current) {
-      const percentage = parseFloat(initialWidth) / 100;
-      const pixelWidth = window.innerWidth * percentage;
-      setWidth(`${pixelWidth}px`);
-    }
-  }, [initialWidth]);
-
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (initialWidth.includes('%') && panelRef.current) {
-        const percentage = parseFloat(initialWidth) / 100;
-        const pixelWidth = window.innerWidth * percentage;
-        setWidth(`${pixelWidth}px`);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [initialWidth]);
 
   return (
     <MotionBox
       ref={panelRef}
-      position="fixed"
-      top={navbarHeight}
-      right="0"
-      width={width}
+      position="relative"
+      width="100%"
       height={`calc(100vh - ${navbarHeight} - ${bottomMargin})`}
       bg="white"
-      boxShadow="-4px 0 10px rgba(0, 0, 0, 0.1)"
+      boxShadow="md"
+      borderRadius="md"
       zIndex={10}
       overflowY="auto"
       p={4}
-      initial={{ x: "100%" }}
-      animate={{ x: isAuthenticated ? 0 : "100%" }}
-      transition={{ duration: 0.5, ease: "easeInOut" }}
+      initial={{ opacity: 0, x: "-100%", scale: 0.9 }}
+      animate={{ 
+        opacity: isAuthenticated ? 1 : 0, 
+      }}
+      exit={{ opacity: 0 }}
+      transition={{ 
+        duration: 0.7,
+        x: { type: "spring", stiffness: 300, damping: 30 }
+      }}
+      mr={0}
     >
       <Box
         position="absolute"
@@ -80,10 +58,6 @@ const AgentDialogPanel: React.FC<AgentDialogPanelProps> = ({
         top="0"
         width="5px"
         height="100%"
-        // cursor="ew-resize"
-        // bg={isDragging ? "blue.400" : "transparent"}
-        // _hover={{ bg: "blue.200" }}
-        // onMouseDown={(e) => handleDragStart(e, setIsDragging, minWidth, maxWidth, setWidth)}
       />
       
       <Text fontSize="xl" fontWeight="bold" mb={4} textAlign="left">
@@ -91,7 +65,7 @@ const AgentDialogPanel: React.FC<AgentDialogPanelProps> = ({
       </Text>
       
       <VStack align="stretch" height="calc(100% - 70px)">
-        {data.slice(0, 15).map((item) => (
+        {data.slice(0, 8).map((item) => (
           <DialogBox key={item.id} item={item} />
         ))}
       </VStack>
