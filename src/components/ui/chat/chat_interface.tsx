@@ -1,0 +1,238 @@
+import { Box, Text, Input, Flex, VStack, IconButton } from "@chakra-ui/react";
+import { Avatar } from "@heroui/avatar";
+import { useAuth } from "@/auth/context";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { FaPaperPlane } from 'react-icons/fa';
+
+const MotionBox = motion(Box);
+const MotionFlex = motion(Flex);
+
+interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+  isStreaming?: boolean;
+}
+
+const messageVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -20, scale: 0.95 }
+};
+
+export const ChatInterface = () => {
+  const { isAuthenticated } = useAuth();
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const isNearBottom = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return true;
+    const threshold = 150;
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    if (scrollContainerRef.current) {
+      if (smooth) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      const shouldScroll = isNearBottom();
+      setTimeout(() => {
+        if (shouldScroll) {
+          scrollToBottom(true);
+        }
+      }, 100);
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    scrollToBottom(false);
+  }, []);
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  const handleSendMessage = () => {
+    if (message.trim()) {
+      setIsSending(true);
+      
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        text: message,
+        sender: 'user',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      setMessage("");
+      
+      setTimeout(() => {
+        setIsSending(false);
+        
+        const botResponseId = Date.now().toString();
+        const fullResponse = "This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant.";
+        
+        setMessages(prev => [...prev, {
+          id: botResponseId,
+          text: "",
+          sender: 'bot',
+          timestamp: new Date(),
+          isStreaming: true
+        }]);
+        
+        setIsStreaming(true);
+        
+        let charIndex = 0;
+        const chunkSize = 10; // Define the size of each chunk
+        const streamInterval = setInterval(() => {
+          if (charIndex <= fullResponse.length) {
+            setMessages(prev => 
+              prev.map(msg => 
+                msg.id === botResponseId 
+                  ? { ...msg, text: fullResponse.substring(0, charIndex) }
+                  : msg
+              )
+            );
+            charIndex += chunkSize; // Increment by chunk size
+          } else {
+            clearInterval(streamInterval);
+            setMessages(prev => 
+              prev.map(msg => 
+                msg.id === botResponseId 
+                  ? { ...msg, isStreaming: false }
+                  : msg
+              )
+            );
+            setIsStreaming(false);
+          }
+        }, 100); // Adjust speed of chunk appearance here (milliseconds)
+      }, 500);
+    }
+  };
+
+  return (
+    <MotionBox
+      width="100%"
+      height="100%"
+      p={4}
+      pl={0}
+      borderRadius="0"
+      boxShadow="sm"
+      display="flex"
+      flexDirection="column"
+      justifyContent="space-between"
+      alignItems="stretch"
+      overflowY="auto"
+      initial={{ opacity: 0, x: -50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+      transition={{ 
+        duration: 0.7,
+        x: { type: "spring", stiffness: 300, damping: 30 }
+      }}
+    >
+      <VStack 
+        align="stretch" 
+        flex="1" 
+        overflowY="auto" 
+        mb={2}
+        gap={4}
+        p={2}
+        px={30}
+        ref={scrollContainerRef}
+      >
+        <AnimatePresence initial={false}>
+          {messages.map((msg) => (
+            <MotionFlex
+              key={msg.id}
+              alignSelf={msg.sender === 'user' ? 'flex-end' : 'flex-start'}
+              maxWidth="80%"
+              variants={messageVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+              flexDirection="column"
+            >
+              <Text 
+                fontSize="sm" 
+                color={msg.sender === 'user' ? 'blue.500' : 'gray.500'} 
+                mb={1}
+                alignSelf={msg.sender === 'user' ? 'flex-end' : 'flex-start'}
+              >
+                {msg.sender === 'bot' ? 'Agent' : 'You'}
+              </Text>
+              <Box
+                bg={msg.sender === 'user' ? 'blue.500' : 'gray.100'}
+                color={msg.sender === 'user' ? 'white' : 'gray.800'}
+                px={4}
+                py={2}
+                borderRadius="lg"
+                boxShadow="sm"
+              >
+                <Text>{msg.text}{msg.isStreaming && "▋"}</Text>
+                <Text 
+                  fontSize="xs" 
+                  color={msg.sender === 'user' ? 'whiteAlpha.700' : 'gray.500'}
+                  textAlign="right"
+                  mt={1}
+                >
+                  {msg.timestamp.toLocaleTimeString()}
+                </Text>
+              </Box>
+            </MotionFlex>
+          ))}
+        </AnimatePresence>
+        <Box ref={messagesEndRef} />
+      </VStack>
+
+      <Box width="100%" pt={2} mb={4} px={30}>
+        <Flex
+          direction="column"
+          alignItems="stretch"
+          bg="gray.50"
+          borderRadius="lg"
+          p={4}
+        >
+          <Input
+            placeholder="Type your message..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            mb={2}
+            height="40px"
+            disabled={!isAuthenticated || isSending || isStreaming}
+            borderRadius="full"
+          />
+          <Box alignSelf="flex-end">
+            <IconButton
+              aria-label="Send message"
+              onClick={handleSendMessage}
+              disabled={!isAuthenticated || isSending || isStreaming}
+              colorScheme="blue"
+              size="sm"
+              borderRadius="full"
+            >
+              <FaPaperPlane />  
+            </IconButton>
+          </Box>
+        </Flex>
+      </Box>
+    </MotionBox>
+  );
+};

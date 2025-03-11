@@ -31,9 +31,6 @@ export default function Navbar() {
                 <NavItem icon={FaComment} href="#">
                     <SimplePopover title="History" />
                 </NavItem>
-                <NavItem icon={FaTasks} href="#">
-                    <SimplePopover title="Tasks" />
-                </NavItem>
                 <NavItem icon={FaCheck} href="#">
                     <SimplePopover title="Approval" />
                 </NavItem>

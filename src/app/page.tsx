@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Flex, Text, Input, Button, IconButton, Icon, Box } from '@chakra-ui/react';
+import { Text, Box } from '@chakra-ui/react';
 import Navbar from '../components/ui/navbar';
 import WelcomeBox from '../components/ui/box/welcome_box';
 import AgentDialogPanel from '../components/ui/panel/agent_dialog_panel';
-import { TextMessage } from '../components/ui/message/text';
+import { ChatInterface } from '../components/ui/chat/chat_interface';
 import { useAuth } from '@/auth/context';
-import { ResizableLayout } from '@/components/ui/resizeable_layout';
+import { ResizableLayoutV } from '@/components/ui/stretch/resizeable_layoutV';
+import { ResizableLayoutH } from '@/components/ui/stretch/resizeable_layoutH';
 import "./globals.css"
 
 export default function Home() {
@@ -59,9 +60,14 @@ export default function Home() {
         height="100vh" // Set fixed height
         overflow="hidden" // Prevent outer scrolling
       >
-       <ResizableLayout
-            leftComponent={<TextMessage />}
-            rightComponent={<AgentDialogPanel />}
+       <ResizableLayoutV
+            leftComponent={<ChatInterface />}
+            rightComponent={
+            <ResizableLayoutH
+              topComponent={<AgentDialogPanel title="Progress" />}
+              bottomComponent={<AgentDialogPanel title="Tasks" />}
+              />}
+            initialLeftWidth="75%"
         />
       </Box>
   

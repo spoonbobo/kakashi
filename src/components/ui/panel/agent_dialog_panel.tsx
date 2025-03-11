@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { Box, VStack, Text } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/auth/context';
@@ -10,11 +10,6 @@ interface AgentDialogPanelProps {
     id: string;
     message: string;
   }>;
-  navbarHeight?: string;
-  bottomMargin?: string;
-  initialWidth?: string;
-  minWidth?: string;
-  maxWidth?: string;
 }
 
 const MotionBox = motion(Box);
@@ -25,6 +20,10 @@ const AgentDialogPanel: React.FC<AgentDialogPanelProps> = ({
 }) => {
   const { isAuthenticated } = useAuth();
 
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <MotionBox
       width="100%"
@@ -34,22 +33,14 @@ const AgentDialogPanel: React.FC<AgentDialogPanelProps> = ({
       borderRadius="md"
       overflowY="auto"
       p={4}
-      animate={{
-        opacity: isAuthenticated ? 1 : 0,
-      }}
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 50 }}
       transition={{ 
         duration: 0.7,
         x: { type: "spring", stiffness: 300, damping: 30 }
       }}
     >
-      <Box
-        position="absolute"
-        left="0"
-        top="0"
-        width="5px"
-        height="100%"
-      />
-      
       <Text fontSize="xl" fontWeight="bold" mb={4} textAlign="left">
         {title}
       </Text>
