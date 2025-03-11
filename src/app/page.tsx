@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Text, Box } from '@chakra-ui/react';
 import Navbar from '../components/ui/navbar';
 import WelcomeBox from '../components/ui/box/welcome_box';
-import AgentDialogPanel from '../components/ui/panel/agent_dialog_panel';
+import AgentTaskPanel from '../components/ui/panel/agent_task_panel';
 import { ChatInterface } from '../components/ui/chat/chat_interface';
 import { ResizableLayoutV } from '@/components/ui/stretch/resizeable_layoutV';
 import { ResizableLayoutH } from '@/components/ui/stretch/resizeable_layoutH';
@@ -135,8 +135,8 @@ export default function Home() {
             }
             rightComponent={
             <ResizableLayoutH
-              topComponent={<AgentDialogPanel title="Progress" />}
-              bottomComponent={<AgentDialogPanel title="Tasks" />}
+              topComponent={<AgentTaskPanel title="Task" dummyRowNumber={5} />}
+              bottomComponent={<AgentTaskPanel title="Inspector" dummyRowNumber={2} />}
               />}
             initialLeftWidth="75%"
         />

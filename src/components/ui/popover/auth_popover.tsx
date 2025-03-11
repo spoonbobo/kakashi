@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Portal, Button, Input, Popover, Text } from '@chakra-ui/react';
+import { Portal, Button, Input, Popover, Text, IconButton, Icon } from '@chakra-ui/react';
 import { useAuth } from '@/auth/context';
+import { FaSignInAlt, FaSignOutAlt } from 'react-icons/fa';
 
 export const AuthPopover = () => {
   const { isAuthenticated, login, logout } = useAuth();
@@ -38,9 +39,9 @@ export const AuthPopover = () => {
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
-        <Button variant="outline">
-          {isAuthenticated ? 'Logout' : 'Login'}
-        </Button>
+        <IconButton variant="outline" aria-label="Login">
+          {isAuthenticated ? <Icon as={FaSignOutAlt} /> : <Icon as={FaSignInAlt} />}
+        </IconButton>
       </Popover.Trigger>
       <Portal>
         <Popover.Positioner>
@@ -48,7 +49,9 @@ export const AuthPopover = () => {
             <Popover.Arrow />
             <Popover.Body>
               {isAuthenticated ? (
-                <Button onClick={logout} colorScheme="red" size="sm">Logout</Button>
+                <IconButton onClick={logout} colorScheme="red" size="sm" aria-label="Logout">
+                  <Icon as={FaSignOutAlt} />
+                </IconButton>
               ) : (
                 <>
                   <Popover.Title fontWeight="medium">Login</Popover.Title>
@@ -72,7 +75,7 @@ export const AuthPopover = () => {
                       onChange={(e) => setPassword(e.target.value)}
                     />
                     {error && <Text color="red.500" mb="2">{error}</Text>}
-                    <Button type="submit" colorScheme="blue" size="sm">Submit</Button>
+                    <Button type="submit" colorScheme="blue" size="sm" aria-label="Login">Login</Button>
                   </form>
                 </>
               )}

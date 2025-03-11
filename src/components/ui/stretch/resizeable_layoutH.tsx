@@ -16,8 +16,8 @@ const MotionBox = motion(Box);
 export const ResizableLayoutH: React.FC<ResizableLayoutProps> = ({
   topComponent,
   bottomComponent,
-  initialTopHeight = '50%',
-  minTopHeight = '20%',
+  initialTopHeight = '70%',
+  minTopHeight = '60%',
   minBottomHeight = '20%',
 }) => {
   const [topHeight, setTopHeight] = useState(parseInt(initialTopHeight, 10));

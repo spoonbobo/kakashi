@@ -10,13 +10,15 @@ interface AgentDialogPanelProps {
     id: string;
     message: string;
   }>;
+  dummyRowNumber?: number;
 }
 
 const MotionBox = motion(Box);
 
-const AgentDialogPanel: React.FC<AgentDialogPanelProps> = ({ 
+const AgentTaskPanel: React.FC<AgentDialogPanelProps> = ({ 
   title = "Agent Dialog", 
   data = Array(15).fill(null).map((_, i) => ({ id: i.toString(), message: `Row ${i + 1}` })),
+  dummyRowNumber = 15,
 }) => {
   const { isAuthenticated } = useAuth();
 
@@ -46,7 +48,7 @@ const AgentDialogPanel: React.FC<AgentDialogPanelProps> = ({
       </Text>
       
       <VStack align="stretch" height="calc(100% - 70px)">
-        {data.slice(0, 8).map((item) => (
+        {data.slice(0, dummyRowNumber).map((item) => (
           <DialogBox key={item.id} item={item} />
         ))}
       </VStack>
@@ -54,4 +56,4 @@ const AgentDialogPanel: React.FC<AgentDialogPanelProps> = ({
   );
 };
 
-export default AgentDialogPanel;
+export default AgentTaskPanel;
