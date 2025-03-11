@@ -26,6 +26,7 @@ export const ChatInterface = () => {
   const { isAuthenticated } = useAuth();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -63,67 +64,103 @@ export const ChatInterface = () => {
     scrollToBottom(false);
   }, []);
 
+  const handleSendMessage = () => {
+    if (message.trim()) {
+      if (messages.length === 0 && sessionId === null) {
+        fetch('/api/chat/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+          .then(response => response.json())
+          .then(data => {
+            setSessionId(data.sessionId);
+            sendMessage(data.sessionId);
+          })
+          .catch(error => {
+            console.error('Error creating chat session:', error);
+          });
+      } else if (sessionId !== null) {
+        sendMessage(sessionId);
+      }
+    }
+  };
+
+  const sendMessage = (sessionId: number) => {
+    setIsSending(true);
+
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      text: message,
+      sender: 'user',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, newMessage]);
+    setMessage("");
+
+    fetch('/api/chat/insert_message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId,
+        message: newMessage,
+      }),
+    })
+    .then(response => response.json())
+    .then(() => {
+      setIsSending(false);
+      
+      const botResponseId = Date.now().toString();
+      const fullResponse = "This is a simulated response that will appear in chunks.";
+      
+      setMessages(prev => [...prev, {
+        id: botResponseId,
+        text: "",
+        sender: 'bot',
+        timestamp: new Date(),
+        isStreaming: true
+      }]);
+      
+      setIsStreaming(true);
+      
+      let charIndex = 0;
+      const chunkSize = 10;
+      const streamInterval = setInterval(() => {
+        if (charIndex <= fullResponse.length) {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === botResponseId 
+                ? { ...msg, text: fullResponse.substring(0, charIndex) }
+                : msg
+            )
+          );
+          charIndex += chunkSize;
+        } else {
+          clearInterval(streamInterval);
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === botResponseId 
+                ? { ...msg, isStreaming: false }
+                : msg
+            )
+          );
+          setIsStreaming(false);
+        }
+      }, 100);
+    })
+    .catch(error => {
+      console.error('Error inserting message:', error);
+      setIsSending(false);
+    });
+  };
+
   if (!isAuthenticated) {
     return null;
   }
-
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      setIsSending(true);
-      
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        text: message,
-        sender: 'user',
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, newMessage]);
-      setMessage("");
-      
-      setTimeout(() => {
-        setIsSending(false);
-        
-        const botResponseId = Date.now().toString();
-        const fullResponse = "This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant. This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant. This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant. This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant.";
-        
-        setMessages(prev => [...prev, {
-          id: botResponseId,
-          text: "",
-          sender: 'bot',
-          timestamp: new Date(),
-          isStreaming: true
-        }]);
-        
-        setIsStreaming(true);
-        
-        let charIndex = 0;
-        const chunkSize = 10; // Define the size of each chunk
-        const streamInterval = setInterval(() => {
-          if (charIndex <= fullResponse.length) {
-            setMessages(prev => 
-              prev.map(msg => 
-                msg.id === botResponseId 
-                  ? { ...msg, text: fullResponse.substring(0, charIndex) }
-                  : msg
-              )
-            );
-            charIndex += chunkSize; // Increment by chunk size
-          } else {
-            clearInterval(streamInterval);
-            setMessages(prev => 
-              prev.map(msg => 
-                msg.id === botResponseId 
-                  ? { ...msg, isStreaming: false }
-                  : msg
-              )
-            );
-            setIsStreaming(false);
-          }
-        }, 100); // Adjust speed of chunk appearance here (milliseconds)
-      }, 500);
-    }
-  };
 
   return (
     <MotionBox
@@ -156,6 +193,9 @@ export const ChatInterface = () => {
         px={30}
         ref={scrollContainerRef}
       >
+        <Text fontSize="md" mb={2}>
+          Total Messages: {messages.length} sessionId: {sessionId}
+        </Text>
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
             <MotionFlex
