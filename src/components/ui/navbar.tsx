@@ -1,4 +1,4 @@
-import { Box, HStack, Link, Text, Icon, Flex, IconButton} from '@chakra-ui/react';
+import { Box, HStack, Text, Icon, Flex, IconButton} from '@chakra-ui/react';
 import { Tooltip } from "@/components/ui/tooltip"
 import { FaCog, FaComment, FaCheck , FaTasks } from 'react-icons/fa';
 import { AuthPopover } from './popover/auth_popover';

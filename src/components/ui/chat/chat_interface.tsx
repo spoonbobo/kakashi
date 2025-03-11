@@ -85,7 +85,7 @@ export const ChatInterface = () => {
         setIsSending(false);
         
         const botResponseId = Date.now().toString();
-        const fullResponse = "This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant.";
+        const fullResponse = "This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant. This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant. This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant. This is a simulated response that will appear in chunks, simulating a real-time streaming response from an AI assistant.";
         
         setMessages(prev => [...prev, {
           id: botResponseId,

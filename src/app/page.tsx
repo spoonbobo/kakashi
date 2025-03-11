@@ -6,7 +6,6 @@ import Navbar from '../components/ui/navbar';
 import WelcomeBox from '../components/ui/box/welcome_box';
 import AgentDialogPanel from '../components/ui/panel/agent_dialog_panel';
 import { ChatInterface } from '../components/ui/chat/chat_interface';
-import { useAuth } from '@/auth/context';
 import { ResizableLayoutV } from '@/components/ui/stretch/resizeable_layoutV';
 import { ResizableLayoutH } from '@/components/ui/stretch/resizeable_layoutH';
 import "./globals.css"
@@ -35,8 +34,6 @@ export default function Home() {
     fetchGreeting();
   }, []);
 
-  const { isAuthenticated } = useAuth();
-
   return (
     <Box
       position="relative"
@@ -44,7 +41,6 @@ export default function Home() {
     >
       <Navbar />
       
-      {/* Welcome Box - Centered absolutely */}
       <Box 
         position="absolute"
         top="50%"
@@ -56,9 +52,9 @@ export default function Home() {
       </Box>
   
       <Box 
-        pt="80px" // Account for navbar height
-        height="100vh" // Set fixed height
-        overflow="hidden" // Prevent outer scrolling
+        pt="80px"
+        height="100vh"
+        overflow="hidden"
       >
        <ResizableLayoutV
             leftComponent={<ChatInterface />}
