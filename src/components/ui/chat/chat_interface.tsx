@@ -98,6 +98,18 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
     scrollToBottom(false);
   }, []);
 
+  useEffect(() => {
+    const handleNewChat = () => {
+      setMessages([]); // Clear all messages
+      setSessionId(null); // Clear session ID
+    };
+
+    window.addEventListener('newChat', handleNewChat);
+
+    return () => {
+      window.removeEventListener('newChat', handleNewChat);
+    };
+  }, []);
 
   const handleSendMessage = () => {
     if (message.trim()) {

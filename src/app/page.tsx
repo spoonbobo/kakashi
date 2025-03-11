@@ -67,6 +67,7 @@ export default function Home() {
     setActiveView('chat');
     setSessionId(null);
     window.history.pushState({}, '', '/?view=chat');
+    window.dispatchEvent(new CustomEvent('newChat'));
   };
 
   const handleTasksClick = () => {
