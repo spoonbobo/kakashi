@@ -35,6 +35,37 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (initialSessionId) {
+      const loadMessages = async () => {
+        try {
+          const response = await fetch(`/api/chat/get_session?sessionId=${initialSessionId}`);
+          const data = await response.json();
+          
+          if (data.messages) {
+            const formattedMessages = data.messages.map((msg: any) => ({
+              id: msg.id,
+              text: msg.value,
+              sender: msg.role === 'user' ? 'user' : 'bot',
+              timestamp: new Date(msg.timestamp),
+              isStreaming: false
+            }));
+            
+            setMessages(formattedMessages);
+          }
+        } catch (error) {
+          console.error('Error loading messages:', error);
+        }
+      };
+
+      loadMessages();
+    }
+  }, [initialSessionId]);
+
+  useEffect(() => {
+    setSessionId(initialSessionId ? Number(initialSessionId) : null);
+  }, [initialSessionId]);
+
   const isNearBottom = () => {
     const container = scrollContainerRef.current;
     if (!container) return true;
@@ -67,9 +98,10 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
     scrollToBottom(false);
   }, []);
 
+
   const handleSendMessage = () => {
     if (message.trim()) {
-      if (messages.length === 0 && sessionId === null) {
+      if (sessionId === null) {
         fetch('/api/chat/create', {
           method: 'POST',
           headers: {
@@ -84,7 +116,7 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
           .catch(error => {
             console.error('Error creating chat session:', error);
           });
-      } else if (sessionId !== null) {
+      } else {
         sendMessage(sessionId);
       }
     }
