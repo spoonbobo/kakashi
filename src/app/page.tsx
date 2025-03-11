@@ -7,12 +7,12 @@ import WelcomeBox from '../components/ui/box/welcome_box';
 import AgentDialogPanel from '../components/ui/panel/agent_dialog_panel';
 import { TextMessage } from '../components/ui/message/text';
 import { useAuth } from '@/auth/context';
+import { ResizableLayout } from '@/components/ui/resizeable_layout';
 import "./globals.css"
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
   const [time, setTime] = useState<string>('');
-  const [message, setMessage] = useState<string>('');
 
   useEffect(() => {
     async function fetchGreeting() {
@@ -54,32 +54,15 @@ export default function Home() {
         <WelcomeBox greeting={greeting} />
       </Box>
   
-      {/* Main content - Only visible when authenticated */}
       <Box 
         pt="80px" // Account for navbar height
         height="100vh" // Set fixed height
         overflow="hidden" // Prevent outer scrolling
       >
-        <Flex 
-          width="100%"
-          height="calc(100% - 80px)" // Subtract navbar height
-          justify="space-between"
-          wrap="nowrap"
-          position="relative"
-          gap={6} // Add gap between flex items
-          px={4} // Move padding here from outer box
-        >
-          <Box width="0px" display={{ base: "none", md: "block" }} flexShrink={0} />          
-          <TextMessage />          
-          <Box 
-            width="25%"
-            minWidth={{ base: "100%", md: "250px" }}
-            display={{ base: "none", md: "block" }}
-            flexShrink={0}
-          >
-            <AgentDialogPanel />
-          </Box>
-        </Flex>
+       <ResizableLayout
+            leftComponent={<TextMessage />}
+            rightComponent={<AgentDialogPanel />}
+        />
       </Box>
   
       <Text

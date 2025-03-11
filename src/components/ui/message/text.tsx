@@ -18,27 +18,24 @@ export const TextMessage = () => {
 
   return (
     <MotionBox
-        width="75%"
-        height="calc(100vh - 80px - 40px)"
-        minWidth={{ base: "100%", md: "50%" }}
-        maxWidth={{ base: "100%", md: "75%" }}
-        p={4}
-        pl={0}
-        borderRadius="0"
-        boxShadow="sm"
-        display="flex"
-        flexDirection="column"
-        justifyContent="space-between"
-        alignItems="stretch"
-        flexShrink={0}
-        overflowY="auto"
-        style={{
-          opacity: isAuthenticated ? 1 : 0,
-        }}
-        transition={{ 
-          duration: 0.7,
-          x: { type: "spring", stiffness: 300, damping: 30 }
-        }}
+      width="100%"
+      height="100%"
+      p={4}
+      pl={0}
+      borderRadius="0"
+      boxShadow="sm"
+      display="flex"
+      flexDirection="column"
+      justifyContent="space-between"
+      alignItems="stretch"
+      overflowY="auto"
+      animate={{
+        opacity: isAuthenticated ? 1 : 0,
+      }}
+      transition={{ 
+        duration: 0.7,
+        x: { type: "spring", stiffness: 300, damping: 30 }
+      }}
     >
         <VStack align="stretch" flex="1" overflowY="auto" mb={4}>
           {/* Add your message components here */}
