@@ -7,6 +7,8 @@ import { FaPaperPlane } from 'react-icons/fa';
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
 const aiServiceEndpoint = "http://localhost:8000/api/chat/stream_response"
+// const aiServiceEndpoint = "http://10.96.155.41:8080/api/chat/stream_response"
+
 interface Message {
   id: string;
   text: string;
@@ -34,6 +36,9 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [isTabVisible, setIsTabVisible] = useState(true);
+  const botMessageTextRef = useRef("");
 
   useEffect(() => {
     if (initialSessionId) {
@@ -41,7 +46,7 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
         try {
           const response = await fetch(`/api/chat/get_session?sessionId=${initialSessionId}`);
           const data = await response.json();
-          
+
           if (data.messages) {
             const formattedMessages = data.messages.map((msg: any) => ({
               id: msg.id,
@@ -50,8 +55,9 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
               timestamp: new Date(msg.timestamp),
               isStreaming: false
             }));
-            
+
             setMessages(formattedMessages);
+            setTimeout(() => scrollToBottom(true), 100);
           }
         } catch (error) {
           console.error('Error loading messages:', error);
@@ -111,6 +117,20 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabVisible(!document.hidden);
+      if (document.hidden && abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   const handleSendMessage = () => {
     if (message.trim()) {
       if (sessionId === null) {
@@ -136,6 +156,7 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
 
   const sendMessage = (sessionId: number | string) => {
     setIsSending(true);
+    abortControllerRef.current = new AbortController();
 
     const newMessage: Message = {
       id: Date.now().toString(),
@@ -159,93 +180,110 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
         role: 'user',
       }),
     })
-    .then(response => response.json())
-    .then(() => {
-      setIsSending(false);
-      
-      // Create a placeholder for the bot's response
-      const botResponseId = Date.now().toString();
-      let botMessageText = "";
+      .then(response => response.json())
+      .then(() => {
+        setIsSending(false);
 
-      setMessages(prev => [...prev, {
-        id: botResponseId,
-        text: "",
-        sender: 'bot',
-        timestamp: new Date(),
-        isStreaming: true
-      }]);
-      
-      setIsStreaming(true);
-      
-      // Use fetch with POST for streaming
-      fetch('http://localhost:8000/api/chat/stream_response', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(
-          { session_id: sessionId,
-            query: message
-          }),
-      })
-      .then(async (response) => {
-        const reader = response.body?.getReader();
-        if (!reader) return;
+        // Create a placeholder for the bot's response
+        const botResponseId = Date.now().toString();
+        botMessageTextRef.current = "";
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        setMessages(prev => [...prev, {
+          id: botResponseId,
+          text: "",
+          sender: 'bot',
+          timestamp: new Date(),
+          isStreaming: true
+        }]);
 
-          const chunk = new TextDecoder().decode(value);
-          botMessageText += chunk;
+        setIsStreaming(true);
 
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === botResponseId 
-                ? { ...msg, text: msg.text + chunk }
-                : msg
-            )
-          );
-        }
+        const saveBotMessage = () => {
+          return fetch('/api/chat/insert_message', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sessionId,
+              message: {
+                id: botResponseId,
+                text: botMessageTextRef.current,
+                timestamp: new Date(),
+              },
+              role: 'bot',
+            }),
+          });
+        };
 
-        // Mark the message as no longer streaming
-        setMessages(prev => 
-          prev.map(msg => 
-            msg.id === botResponseId 
-              ? { ...msg, isStreaming: false }
-              : msg
-          )
-        );
-        setIsStreaming(false);
-        
-        // Insert the complete bot message to the database
-        fetch('/api/chat/insert_message', {
+        fetch(`${aiServiceEndpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            sessionId,
-            message: {
-              id: botResponseId,
-              text: botMessageText,
-              timestamp: new Date(),
-            },
-            role: 'bot',
+            session_id: sessionId,
+            query: message
           }),
-        }).catch(error => {
-          console.error('Error saving bot message:', error);
-        });
+          signal: abortControllerRef.current?.signal
+        })
+          .then(async (response) => {
+            const reader = response.body?.getReader();
+            if (!reader) return;
+
+            const decoder = new TextDecoder();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value);
+              // Parse the SSE data
+              const eventData = chunk.split('data: ')[1];
+              if (eventData) {
+                try {
+                  const parsedData = JSON.parse(eventData);
+                  if (parsedData.chunk) {
+                    botMessageTextRef.current += parsedData.chunk;
+                    setMessages(prev =>
+                      prev.map(msg =>
+                        msg.id === botResponseId
+                          ? { ...msg, text: msg.text + parsedData.chunk }
+                          : msg
+                      )
+                    );
+                  }
+                  
+                  if (parsedData.status === 'complete') {
+                    setMessages(prev =>
+                      prev.map(msg =>
+                        msg.id === botResponseId
+                          ? { ...msg, isStreaming: false }
+                          : msg
+                      )
+                    );
+                    setIsStreaming(false);
+                    await saveBotMessage();
+                  }
+                } catch (error) {
+                  console.error('Error parsing event data:', error);
+                }
+              }
+            }
+          })
+          .catch(error => {
+            if (error.name !== 'AbortError') {
+              console.error('Error streaming response:', error);
+            }
+            setIsStreaming(false);
+            saveBotMessage().catch(err => {
+              console.error('Error saving bot message:', err);
+            });
+          });
       })
       .catch(error => {
-        console.error('Error streaming response:', error);
-        setIsStreaming(false);
+        console.error('Error inserting message:', error);
+        setIsSending(false);
       });
-    })
-    .catch(error => {
-      console.error('Error inserting message:', error);
-      setIsSending(false);
-    });
   };
 
   if (!isAuthenticated) {
@@ -274,15 +312,15 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -50 }}
-        transition={{ 
+        transition={{
           duration: 0.7,
           x: { type: "spring", stiffness: 300, damping: 30 }
         }}
       >
-        <VStack 
-          align="stretch" 
-          flex="1" 
-          overflowY="auto" 
+        <VStack
+          align="stretch"
+          flex="1"
+          overflowY="auto"
           mb={2}
           gap={4}
           p={2}
@@ -303,9 +341,9 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
                 transition={{ duration: 0.2 }}
                 flexDirection="column"
               >
-                <Text 
-                  fontSize="sm" 
-                  color={msg.sender === 'user' ? 'blue.500' : 'gray.500'} 
+                <Text
+                  fontSize="sm"
+                  color={msg.sender === 'user' ? 'blue.500' : 'gray.500'}
                   mb={1}
                   alignSelf={msg.sender === 'user' ? 'flex-end' : 'flex-start'}
                 >
@@ -320,8 +358,8 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
                   boxShadow="sm"
                 >
                   <Text>{msg.text}{msg.isStreaming && "▋"}</Text>
-                  <Text 
-                    fontSize="xs" 
+                  <Text
+                    fontSize="xs"
                     color={msg.sender === 'user' ? 'whiteAlpha.700' : 'gray.500'}
                     textAlign="right"
                     mt={1}
@@ -362,7 +400,7 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
                 size="sm"
                 borderRadius="full"
               >
-                <FaPaperPlane />  
+                <FaPaperPlane />
               </IconButton>
             </Box>
           </Flex>
