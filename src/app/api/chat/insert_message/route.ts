@@ -12,11 +12,17 @@ const pool = new Pool({
 
 export async function POST(request: Request) {
     try {
-        const { sessionId, message } = await request.json();
+        const { sessionId, message, role } = await request.json();
+        
+        if (role !== 'user' && role !== 'bot') {
+            return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+        }
+
         await pool.query(
             'INSERT INTO messages (session_id, timestamp, role, value) VALUES ($1, $2, $3, $4)',
-            [sessionId, message.timestamp, message.sender, message.text]
+            [sessionId, message.timestamp, role, message.text]
         );
+
         return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
         console.error('Error inserting message:', error);

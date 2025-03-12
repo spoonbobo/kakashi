@@ -94,7 +94,7 @@ export default function Navbar( {
                         <Icon as={FaCheck} />
                     </IconButton>
                 </Tooltip>
-                <Tooltip content="Forum">
+                {/* <Tooltip content="Forum">
                     <IconButton
                        bg="transparent"
                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
@@ -105,7 +105,7 @@ export default function Navbar( {
                     >
                         <Icon as={FaDiagnoses} />
                     </IconButton>
-                </Tooltip>
+                </Tooltip> */}
             </HStack>
 
             <Flex align="center">

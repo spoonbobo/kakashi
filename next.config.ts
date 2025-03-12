@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["@chakra-ui/react"],
   },
   i18n: {
-    locales: ["zh", "en"],
+    locales: ["en"],
     defaultLocale: "en",
   },
 };

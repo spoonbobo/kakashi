@@ -6,6 +6,8 @@ import { FaPaperPlane } from 'react-icons/fa';
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
+// const aiServiceEndpoint = "http://10.96.155.41:8080/api/chat/stream_response"
+const aiServiceEndpoint = "http://localhost:8000/api/chat/stream_response"
 
 interface Message {
   id: string;
@@ -147,6 +149,7 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
     setMessages(prev => [...prev, newMessage]);
     setMessage("");
 
+    // First, insert the user message
     fetch('/api/chat/insert_message', {
       method: 'POST',
       headers: {
@@ -155,15 +158,17 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
       body: JSON.stringify({
         sessionId,
         message: newMessage,
+        role: 'user',
       }),
     })
     .then(response => response.json())
     .then(() => {
       setIsSending(false);
       
+      // Create a placeholder for the bot's response
       const botResponseId = Date.now().toString();
-      const fullResponse = "This is a simulated response that will appear in chunks.";
-      
+      let botMessageText = "";
+
       setMessages(prev => [...prev, {
         id: botResponseId,
         text: "",
@@ -174,20 +179,40 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
       
       setIsStreaming(true);
       
-      let charIndex = 0;
-      const chunkSize = 10;
-      const streamInterval = setInterval(() => {
-        if (charIndex <= fullResponse.length) {
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === botResponseId 
-                ? { ...msg, text: fullResponse.substring(0, charIndex) }
-                : msg
-            )
-          );
-          charIndex += chunkSize;
-        } else {
-          clearInterval(streamInterval);
+      // Use fetch instead of EventSource
+      fetch(aiServiceEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          message: newMessage.text
+        }),
+      })
+      .then(response => {
+        if (!response.body) throw new Error('No response body');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        const processStream = async () => {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            botMessageText += chunk;
+            
+            setMessages(prev => 
+              prev.map(msg => 
+                msg.id === botResponseId 
+                  ? { ...msg, text: msg.text + chunk }
+                  : msg
+              )
+            );
+          }
+
+          // Mark as complete
           setMessages(prev => 
             prev.map(msg => 
               msg.id === botResponseId 
@@ -196,8 +221,36 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
             )
           );
           setIsStreaming(false);
-        }
-      }, 100);
+          
+          // Insert the complete bot message to the database
+          fetch('/api/chat/insert_message', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sessionId,
+              message: {
+                id: botResponseId,
+                text: botMessageText,
+                timestamp: new Date(),
+              },
+              role: 'bot',
+            }),
+          }).catch(error => {
+            console.error('Error saving bot message:', error);
+          });
+        };
+
+        processStream().catch(error => {
+          console.error('Error processing stream:', error);
+          setIsStreaming(false);
+        });
+      })
+      .catch(error => {
+        console.error('Error with fetch:', error);
+        setIsStreaming(false);
+      });
     })
     .catch(error => {
       console.error('Error inserting message:', error);

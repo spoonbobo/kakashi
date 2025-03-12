@@ -11,7 +11,7 @@ import { ResizableLayoutH } from '@/components/ui/stretch/resizeable_layoutH';
 import { Conversations } from '../components/ui/chat/chat_history';
 import { Tasks } from '../components/ui/tasks/task_history';
 import { Approvals } from '../components/ui/approvals/approval_history';
-import TaskInspector from '../components/ui/panel/task_inspector';
+import TaskLogger from '../components/ui/panel/task_logger';
 import "./globals.css"
 
 export default function Home() {
@@ -148,7 +148,7 @@ export default function Home() {
             rightComponent={
             <ResizableLayoutH
               topComponent={<AgentTaskPanel title="Task" onTaskSelect={setSelectedTask} />}
-              bottomComponent={<TaskInspector title="Inspector" task={selectedTask} />}
+              bottomComponent={<TaskLogger title="Task Log" task={selectedTask} />}
               />}
             initialLeftWidth="75%"
         />
