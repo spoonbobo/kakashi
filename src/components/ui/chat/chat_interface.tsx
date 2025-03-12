@@ -6,8 +6,8 @@ import { FaPaperPlane } from 'react-icons/fa';
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
-const aiServiceEndpoint = "http://localhost:8000/api/chat/stream_response"
-// const aiServiceEndpoint = "http://10.96.155.41:8080/api/chat/stream_response"
+const aiServiceEndpoint = "http://localhost:8080/api/chat/stream_response"
+// const aiServiceEndpoint = "http://localhost:8000/api/chat/stream_response"
 
 interface Message {
   id: string;
@@ -106,8 +106,8 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
 
   useEffect(() => {
     const handleNewChat = () => {
-      setMessages([]); // Clear all messages
-      setSessionId(null); // Clear session ID
+      setMessages([]);
+      setSessionId(null);
     };
 
     window.addEventListener('newChat', handleNewChat);
@@ -168,7 +168,6 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
     setMessages(prev => [...prev, newMessage]);
     setMessage("");
 
-    // First, insert the user message
     fetch('/api/chat/insert_message', {
       method: 'POST',
       headers: {
@@ -184,7 +183,6 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
       .then(() => {
         setIsSending(false);
 
-        // Create a placeholder for the bot's response
         const botResponseId = Date.now().toString();
         botMessageTextRef.current = "";
 
@@ -228,51 +226,68 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
           signal: abortControllerRef.current?.signal
         })
           .then(async (response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const reader = response.body?.getReader();
-            if (!reader) return;
+            if (!reader) {
+              throw new Error('No reader available in response body');
+            }
 
             const decoder = new TextDecoder();
             while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
+              try {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-              const chunk = decoder.decode(value);
-              // Parse the SSE data
-              const eventData = chunk.split('data: ')[1];
-              if (eventData) {
-                try {
-                  const parsedData = JSON.parse(eventData);
-                  if (parsedData.chunk) {
-                    botMessageTextRef.current += parsedData.chunk;
-                    setMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === botResponseId
-                          ? { ...msg, text: msg.text + parsedData.chunk }
-                          : msg
-                      )
-                    );
+                const chunk = decoder.decode(value, { stream: true });
+                const eventData = chunk.split('data: ')[1];
+                if (eventData) {
+                  try {
+                    const parsedData = JSON.parse(eventData);
+                    console.log('Received chunk:', parsedData.content);
+                    if (parsedData.content) {
+                      botMessageTextRef.current += parsedData.content;
+                      setMessages(prev =>
+                        prev.map(msg =>
+                          msg.id === botResponseId
+                            ? { ...msg, text: msg.text + parsedData.content }
+                            : msg
+                        )
+                      );
+                    }
+
+                    if (parsedData.status === 'complete') {
+                      setMessages(prev =>
+                        prev.map(msg =>
+                          msg.id === botResponseId
+                            ? { ...msg, isStreaming: false }
+                            : msg
+                        )
+                      );
+                      setIsStreaming(false);
+                      await saveBotMessage();
+                    }
+                  } catch (error) {
+                    console.error('Error parsing event data:', error);
+                    console.error('Raw event data:', eventData);
                   }
-                  
-                  if (parsedData.status === 'complete') {
-                    setMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === botResponseId
-                          ? { ...msg, isStreaming: false }
-                          : msg
-                      )
-                    );
-                    setIsStreaming(false);
-                    await saveBotMessage();
-                  }
-                } catch (error) {
-                  console.error('Error parsing event data:', error);
                 }
+              } catch (error) {
+                console.error('Error reading stream:', error);
+                break;
               }
             }
           })
           .catch(error => {
             if (error.name !== 'AbortError') {
               console.error('Error streaming response:', error);
+              console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+              });
             }
             setIsStreaming(false);
             saveBotMessage().catch(err => {
