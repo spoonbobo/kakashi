@@ -6,9 +6,7 @@ import { FaPaperPlane } from 'react-icons/fa';
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
-// const aiServiceEndpoint = "http://10.96.155.41:8080/api/chat/stream_response"
 const aiServiceEndpoint = "http://localhost:8000/api/chat/stream_response"
-
 interface Message {
   id: string;
   text: string;
@@ -179,76 +177,68 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
       
       setIsStreaming(true);
       
-      // Use fetch instead of EventSource
-      fetch(aiServiceEndpoint, {
+      // Use fetch with POST for streaming
+      fetch('http://localhost:8000/api/chat/stream_response', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sessionId,
-          message: newMessage.text
-        }),
+        body: JSON.stringify(
+          { session_id: sessionId,
+            query: message
+          }),
       })
-      .then(response => {
-        if (!response.body) throw new Error('No response body');
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+      .then(async (response) => {
+        const reader = response.body?.getReader();
+        if (!reader) return;
 
-        const processStream = async () => {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value);
-            botMessageText += chunk;
-            
-            setMessages(prev => 
-              prev.map(msg => 
-                msg.id === botResponseId 
-                  ? { ...msg, text: msg.text + chunk }
-                  : msg
-              )
-            );
-          }
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-          // Mark as complete
+          const chunk = new TextDecoder().decode(value);
+          botMessageText += chunk;
+
           setMessages(prev => 
             prev.map(msg => 
               msg.id === botResponseId 
-                ? { ...msg, isStreaming: false }
+                ? { ...msg, text: msg.text + chunk }
                 : msg
             )
           );
-          setIsStreaming(false);
-          
-          // Insert the complete bot message to the database
-          fetch('/api/chat/insert_message', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              sessionId,
-              message: {
-                id: botResponseId,
-                text: botMessageText,
-                timestamp: new Date(),
-              },
-              role: 'bot',
-            }),
-          }).catch(error => {
-            console.error('Error saving bot message:', error);
-          });
-        };
+        }
 
-        processStream().catch(error => {
-          console.error('Error processing stream:', error);
-          setIsStreaming(false);
+        // Mark the message as no longer streaming
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === botResponseId 
+              ? { ...msg, isStreaming: false }
+              : msg
+          )
+        );
+        setIsStreaming(false);
+        
+        // Insert the complete bot message to the database
+        fetch('/api/chat/insert_message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sessionId,
+            message: {
+              id: botResponseId,
+              text: botMessageText,
+              timestamp: new Date(),
+            },
+            role: 'bot',
+          }),
+        }).catch(error => {
+          console.error('Error saving bot message:', error);
         });
       })
       .catch(error => {
-        console.error('Error with fetch:', error);
+        console.error('Error streaming response:', error);
         setIsStreaming(false);
       });
     })
