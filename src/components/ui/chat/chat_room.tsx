@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { io, Socket } from "socket.io-client";
 import { Box, Text, Input, Flex, VStack, IconButton, Spinner, Center, Button } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaPaperPlane, FaSync } from "react-icons/fa";
 import { useAuth } from "@/auth/context";
 import { v4 as uuidv4 } from 'uuid';
-import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -25,7 +24,7 @@ interface User {
   username: string;
 }
 
-export const ChatRoom = ({ roomId }: { roomId: string }) => {
+export const ChatRoom = React.memo(({ roomId }: { roomId: string }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -65,8 +64,10 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
     // Add debug logging for the token
     console.log('Using token:', currentUser.token);
     console.log('Using JWT_SECRET:', process.env.NEXT_PUBLIC_JWT_SECRET);
-    
-    const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001', {
+    console.log('NEXT_PUBLIC_SOCKET_URL:', window.location.hostname);
+
+    const newSocket = io(window.location.hostname, {
+      path: '/socket.io/',
       auth: {
         token: currentUser.token,
         roomId: currentRoomId
@@ -97,7 +98,8 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
 
     newSocket.on('connect_error', (err) => {
       console.error('Connection error:', err.message);
-      
+      console.error('Connection error object:', err);
+
       if (err.message.includes('Authentication error')) {
         setConnectionError('Authentication failed. Please try logging out and back in.');
       } else if (err.message.includes('WebSocket')) {
@@ -211,7 +213,7 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = () => {
+  const sendMessage = useCallback(() => {
     if (socket && message.trim()) {
       socket.emit('message', {
         text: message,
@@ -219,7 +221,7 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
       });
       setMessage("");
     }
-  };
+  }, [socket, message, currentUser]);
 
   const scrollToBottom = (smooth = true) => {
     setTimeout(() => {
@@ -231,11 +233,16 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
     setRetryCount(prev => prev + 1);
   };
 
-  const messageVariants = {
+  const messageVariants = useMemo(() => ({
     hidden: { opacity: 0, y: 20, scale: 0.95 },
     visible: { opacity: 1, y: 0, scale: 1 },
     exit: { opacity: 0, y: -20, scale: 0.95 }
-  };
+  }), []);
+
+  // Add message input handler without causing full re-renders
+  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+  }, []);
 
   if (loading) {
     return (
@@ -344,7 +351,7 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
           <Input
             placeholder="Type your message..."
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleMessageChange}
             onKeyPress={(e) => e.key === "Enter" && sendMessage()}
             borderRadius="full"
           />
@@ -360,6 +367,8 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
       </Box>
     </Flex>
   );
-};
+});
 
-export default ChatRoom;
+ChatRoom.displayName = 'ChatRoom';
+
+export default React.memo(ChatRoom);

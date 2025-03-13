@@ -1,0 +1,54 @@
+# Ignore all node_modules
+node_modules/
+
+# Ignore build artifacts
+.next/
+dist/
+build/
+
+# Ignore environment files (except .env)
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Ignore version control
+.git/
+.gitignore
+
+# Ignore IDE specific files
+.vscode/
+.idea/
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore cache
+.cache/
+
+# Ignore OS specific files
+.DS_Store
+Thumbs.db
+
+# Ignore Docker files (except Dockerfile and docker-compose.yml)
+docker-compose.*.yml
+docker-compose.override.yml
+
+# Ignore TypeScript build files
+*.js
+*.js.map
+!src/server/chat/chat_server.js  # Keep the compiled chat server
+
+# Ignore test files
+__tests__/
+*.spec.ts
+*.test.ts
+
+# Ignore documentation
+docs/
+*.md
+
+# Ignore package manager specific files
+yarn.lock
+pnpm-lock.yaml

@@ -7,6 +7,8 @@ import express from 'express';
 import pkg from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config();
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
 const { JwtPayload } = pkg;
 
 
@@ -30,32 +32,11 @@ interface ChatMessage {
   username?: string;
 }
 
-// Define a type for the decoded token
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
 interface DecodedToken extends JwtPayload {
   userId: string;
   username: string;
-}
-
-// Add this function near the top of your file
-function debugToken(token: string): void {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      console.error('Invalid token format: Token should have 3 parts');
-      return;
-    }
-    
-    const header = JSON.parse(Buffer.from(parts[0], 'base64').toString());
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    
-    console.log('Token header:', header);
-    console.log('Token payload:', payload);
-    console.log('Token expiration:', new Date(payload.exp * 1000).toISOString());
-    console.log('Current time:', new Date().toISOString());
-    console.log('Token expired:', payload.exp * 1000 < Date.now());
-  } catch (error) {
-    console.error('Error parsing token:', error);
-  }
 }
 
 // Then update the verifyToken function to use it
@@ -83,6 +64,10 @@ export const setupChatServer = (httpServer: HttpServer) => {
   // Redis setup
   const pubClient = createClient({ url: process.env.REDIS_URL });
   const subClient = pubClient.duplicate();
+
+  // Add error handlers to the Redis clients.  CRITICAL!
+  pubClient.on('error', (err) => console.error('Redis Pub Client Error', err));
+  subClient.on('error', (err) => console.error('Redis Sub Client Error', err));
 
   Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
     io.adapter(createAdapter(pubClient, subClient));
@@ -185,6 +170,8 @@ const httpServer = app.listen(3001, () => {
 
 // Add this near the bottom of your file, before starting the server
 console.log('Socket server environment:');
+console.log('REDIS_URL:', process.env.REDIS_URL);
+console.log('JWT_SECRET:', process.env.JWT_SECRET);
 console.log('JWT_SECRET length:', process.env.JWT_SECRET?.length || 0);
 console.log('JWT_SECRET preview:', process.env.JWT_SECRET ? 
   `${process.env.JWT_SECRET.substring(0, 3)}...${process.env.JWT_SECRET.substring(process.env.JWT_SECRET.length - 3)}` : 

@@ -4,10 +4,10 @@ import jwt from 'jsonwebtoken';
 // import bcrypt from 'bcryptjs';
 
 const pool = new Pool({
-  user: process.env.PGUSER,
-  host: process.env.PGHOST,
-  database: process.env.PGDATABASE,
-  password: process.env.PGPASSWORD,
+  user: process.env.PGUSER,        // spoonbobo
+  host: process.env.PGHOST,        // kakashi-psqldb
+  database: process.env.PGDATABASE,// postgres
+  password: process.env.PGPASSWORD,// bobo1234
   port: parseInt(process.env.PGPORT || '5432', 10),
 });
 
@@ -53,6 +53,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error during login:', error);
+    console.log(process.env.PGUSER);
+    console.log(process.env.PGHOST);
+    console.log(process.env.PGDATABASE);
+    console.log(process.env.PGPASSWORD);
+    console.log(process.env.PGPORT);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

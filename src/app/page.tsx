@@ -91,7 +91,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchGreeting() {
       try {
-        const response = await fetch('http://localhost:3000/api/greeting');
+        const response = await fetch('/api/greeting');
         const data = await response.json();
         setGreeting(data.greeting);
         

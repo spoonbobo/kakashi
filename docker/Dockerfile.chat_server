@@ -1,0 +1,33 @@
+# Use official Node.js image
+FROM node:23.7-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+RUN npm install 
+
+
+# Copy the chat server source code
+COPY src/server/chat /app/src/server/chat/
+
+# Create a minimal tsconfig.json that allows any JavaScript
+RUN echo '{\
+  "compilerOptions": {\
+    "target": "es2016",\
+    "module": "commonjs",\
+    "esModuleInterop": true,\
+    "skipLibCheck": true,\
+    "allowJs": true,\
+    "noEmit": true\
+  }\
+}' > /app/tsconfig.json
+
+# Expose the port the chat server runs on
+EXPOSE 3001
+
+# Start the chat server directly with Node
+# This bypasses the TypeScript compilation issue
+CMD ["node", "src/server/chat/chat_server.ts"]
