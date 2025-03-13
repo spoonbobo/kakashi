@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import jwt from 'jsonwebtoken';
 // import bcrypt from 'bcryptjs';
 
 const pool = new Pool({
@@ -13,8 +14,11 @@ const pool = new Pool({
 export async function POST(request: Request) {
   try {
     const { username, password } = await request.json();
+    console.log('Login Request:', { username, password });
 
     const res = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    console.log('Database Query Result:', res.rows);
+
     const user = res.rows[0];
 
     if (!user) {
@@ -22,12 +26,27 @@ export async function POST(request: Request) {
     }
 
     const isPasswordValid = password === user.password;
+    console.log('Password Valid:', isPasswordValid);
 
     if (!isPasswordValid) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
 
-    return NextResponse.json({ message: 'Login successful' });
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      process.env.JWT_SECRET!,
+      { expiresIn: '1h' }
+    );
+
+    return NextResponse.json({ 
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        username: user.username
+      }
+    });
   } catch (error) {
     console.error('Error during login:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -6,8 +6,8 @@ import { FaPaperPlane } from 'react-icons/fa';
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
-const aiServiceEndpoint = "http://localhost:8080/api/chat/stream_response"
-// const aiServiceEndpoint = "http://localhost:8000/api/chat/stream_response"
+// const aiServiceEndpoint = "http://localhost:8080/api/chat/stream_response"
+const aiServiceEndpoint = "http://localhost:8000/api/chat/stream_response"
 
 interface Message {
   id: string;
@@ -104,14 +104,25 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
     scrollToBottom(false);
   }, []);
 
+  const stopCurrentStream = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsStreaming(false);
+      // Find and mark any streaming messages as complete
+      setMessages(prev => prev.map(msg => 
+        msg.isStreaming ? { ...msg, isStreaming: false } : msg
+      ));
+    }
+  };
+
   useEffect(() => {
     const handleNewChat = () => {
+      stopCurrentStream();
       setMessages([]);
       setSessionId(null);
     };
 
     window.addEventListener('newChat', handleNewChat);
-
     return () => {
       window.removeEventListener('newChat', handleNewChat);
     };
@@ -133,6 +144,7 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
 
   const handleSendMessage = () => {
     if (message.trim()) {
+      stopCurrentStream(); // Stop any ongoing stream before starting a new one
       if (sessionId === null) {
         fetch('/api/chat/create', {
           method: 'POST',
@@ -242,11 +254,10 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
                 if (done) break;
 
                 const chunk = decoder.decode(value, { stream: true });
-                const eventData = chunk.split('data: ')[1];
-                if (eventData) {
+                console.log('Received chunk:', chunk);
+                if (chunk) {
                   try {
-                    const parsedData = JSON.parse(eventData);
-                    console.log('Received chunk:', parsedData.content);
+                    const parsedData = JSON.parse(chunk);
                     if (parsedData.content) {
                       botMessageTextRef.current += parsedData.content;
                       setMessages(prev =>
@@ -271,7 +282,6 @@ export const ChatInterface = ({ initialSessionId }: ChatInterfaceProps) => {
                     }
                   } catch (error) {
                     console.error('Error parsing event data:', error);
-                    console.error('Raw event data:', eventData);
                   }
                 }
               } catch (error) {

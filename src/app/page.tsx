@@ -13,6 +13,7 @@ import { Tasks } from '../components/ui/tasks/task_history';
 import { Approvals } from '../components/ui/approvals/approval_history';
 import TaskLogger from '../components/ui/panel/task_logger';
 import "./globals.css"
+import ChatRoom from '../components/ui/chat/chat_room';
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
@@ -139,11 +140,11 @@ export default function Home() {
       >
        <ResizableLayoutV
             leftComponent={
-              activeView === 'chat' ? <ChatInterface initialSessionId={sessionId ? sessionId : undefined} /> :
+              activeView === 'chat' ? <ChatRoom roomId={sessionId || ''} /> :
               activeView === 'tasks' ? <Tasks /> :
               activeView === 'approvals' ? <Approvals /> :
               activeView === 'conversations' ? <Conversations /> :
-              <ChatInterface initialSessionId={sessionId ? sessionId : undefined} />
+              <ChatRoom roomId={sessionId || ''} />
             }
             rightComponent={
             <ResizableLayoutH

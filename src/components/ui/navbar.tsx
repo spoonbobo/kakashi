@@ -21,6 +21,11 @@ export default function Navbar( {
     onFeedbackClick
 }: NavbarProps ) {
 
+    const handleNewChatClick = () => {
+        window.dispatchEvent(new Event('newChat'));
+        onNewChatClick();
+    };
+
     return (
         <Box
             as="nav"
@@ -52,7 +57,7 @@ export default function Navbar( {
                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
                        aria-label="New Chat"
-                       onClick={onNewChatClick}
+                       onClick={handleNewChatClick}
                     >
                         <Icon as={FaPlus} />
                     </IconButton>

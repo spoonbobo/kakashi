@@ -8,6 +8,17 @@ const nextConfig: NextConfig = {
     locales: ["en"],
     defaultLocale: "en",
   },
+  webpack: (config) => {
+    config.resolve.fallback = { 
+      ...config.resolve.fallback,
+      net: false,
+      tls: false,
+      dns: false,
+      fs: false,
+      child_process: false
+    };
+    return config;
+  },
 };
 
 export default nextConfig;

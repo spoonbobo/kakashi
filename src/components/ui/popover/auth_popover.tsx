@@ -4,15 +4,17 @@ import { useAuth } from '@/auth/context';
 import { FaSignInAlt, FaSignOutAlt } from 'react-icons/fa';
 
 export const AuthPopover = () => {
-  const { isAuthenticated, login, logout } = useAuth();
+  const { isAuthenticated, user, login, logout } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  console.log('User:', user);
+  console.log('isAuthenticated:', isAuthenticated);
+
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
-    console.log(username, password);
 
     try {
       const response = await fetch('/api/login', {
@@ -23,16 +25,36 @@ export const AuthPopover = () => {
         body: JSON.stringify({ username, password }),
       });
 
+      const data = await response.json();
+      console.log('API Response:', data);
+
       if (!response.ok) {
-        console.log(response);
-        throw new Error('Login failed');
+        // Handle API errors
+        throw new Error(data.error || 'Login failed');
       }
 
-      const data = await response.json();
-      console.log('Login successful:', data);
-      login(); // Update the context state
+      // Ensure the response contains the expected data
+      if (!data.token || !data.user) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Log the data being passed to login
+      const loginData = {
+        id: data.user.id,
+        username: data.user.username,
+        token: data.token
+      };
+      console.log('Calling login with:', loginData);
+
+      // Update the auth context
+      login(loginData);
+
+      // Clear form fields
+      setUsername('');
+      setPassword('');
     } catch (error) {
-      setError('Invalid username or password');
+      console.error('Login Error:', error);
+      setError(error instanceof Error ? error.message : 'Login failed');
     }
   };
 
