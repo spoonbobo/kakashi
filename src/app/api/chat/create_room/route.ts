@@ -1,4 +1,4 @@
-// pages/api/createChatSession.ts
+// /app/api/chat/create_room/route.ts
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
@@ -13,11 +13,11 @@ const pool = new Pool({
 
 export async function POST(request: Request) {
     try {
-      const result = await pool.query('INSERT INTO chat_sessions DEFAULT VALUES RETURNING id');
+      const result = await pool.query('INSERT INTO chat_rooms DEFAULT VALUES RETURNING id');
       const sessionId = result.rows[0].id;
       return NextResponse.json({ sessionId }, { status: 200 });
     } catch (error) {
-      console.error('Error creating chat session:', error);
+      console.error('Error creating chat room:', error);
       return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
   }

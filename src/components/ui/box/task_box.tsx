@@ -16,7 +16,7 @@ interface TaskBoxProps {
     onClick: () => void;
 }
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 export const TaskBox = ({ item, onClick }: TaskBoxProps) => {
     const [progress, setProgress] = useState(0);

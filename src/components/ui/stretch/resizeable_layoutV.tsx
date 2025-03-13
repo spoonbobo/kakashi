@@ -12,7 +12,7 @@ interface ResizableLayoutProps {
 }
 
 // Create motion components
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 export const ResizableLayoutV: React.FC<ResizableLayoutProps> = ({
   leftComponent,

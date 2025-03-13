@@ -35,6 +35,7 @@ services:
       - REDIS_URL=redis://kakashi-redis:6379
       - JWT_SECRET=${JWT_SECRET:-dev_secret}
       - CHAT_SERVER_PORT=${CHAT_SERVER_PORT:-3001}
+      - CLIENT_URL=${CLIENT_URL:-http://kakashi-next_app:3000}
       - NODE_ENV=development
     volumes:
       - .:/app
@@ -89,7 +90,7 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4
-    container_name: pgadmin
+    container_name: kakashi-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin

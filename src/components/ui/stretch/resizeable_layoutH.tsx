@@ -11,7 +11,7 @@ interface ResizableLayoutProps {
   minBottomHeight?: string;
 }
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 export const ResizableLayoutH: React.FC<ResizableLayoutProps> = ({
   topComponent,

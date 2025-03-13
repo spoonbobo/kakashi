@@ -9,7 +9,7 @@ interface AgentTaskPanelProps {
   onTaskSelect: (task: any) => void;
 }
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({ 
   title = "Agent Dialog", 

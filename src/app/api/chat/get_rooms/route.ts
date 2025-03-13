@@ -30,23 +30,23 @@ export async function GET(request: Request) {
                     ) ORDER BY m.timestamp DESC
                 ) AS messages,
                 COUNT(m.id) AS message_count
-            FROM chat_sessions cs
-            LEFT JOIN messages m ON cs.id = m.session_id
+            FROM chat_rooms cs
+            LEFT JOIN messages m ON cs.id = m.room_id
             GROUP BY cs.id
             ORDER BY cs.created_at DESC
             LIMIT $1 OFFSET $2
         `, [limit, offset]);
         
-        const sessions = result.rows.map(row => ({
+        const rooms = result.rows.map(row => ({
             id: row.id,
             created_at: row.created_at,
             messages: row.messages.filter((m: any) => m.id !== null),
             message_count: row.message_count
         }));
 
-        return NextResponse.json({ sessions }, { status: 200 });
+        return NextResponse.json({ rooms }, { status: 200 });
     } catch (error) {
-        console.error('Error fetching sessions:', error);
+        console.error('Error fetching rooms:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -5,12 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FaPaperPlane, FaSync } from "react-icons/fa";
 import { useAuth } from "@/auth/context";
 import { v4 as uuidv4 } from 'uuid';
-import dotenv from 'dotenv';
 
-dotenv.config();
-
-const MotionBox = motion(Box);
-const MotionFlex = motion(Flex);
+const MotionBox = motion.create(Box);
+const MotionFlex = motion.create(Flex);
 
 interface ChatMessage {
   id: string;
@@ -24,12 +21,11 @@ interface User {
   username: string;
 }
 
-export const ChatRoom = React.memo(({ roomId }: { roomId: string }) => {
+export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
   const { user: currentUser, isAuthenticated } = useAuth();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,213 +33,197 @@ export const ChatRoom = React.memo(({ roomId }: { roomId: string }) => {
   const [roomName, setRoomName] = useState<string>("Chat Room");
   const [retryCount, setRetryCount] = useState(0);
   
-  // Use an actual room ID or generate one if not provided
-  const currentRoomId = roomId || uuidv4();
-
-  // Keep track of socket connection state to prevent multiple connections
+  // Simplify room ID tracking - no need for both state and memo
+  const roomIdRef = useRef<string>(roomId || uuidv4());
+  
+  // Use a single socket ref for managing connection
   const socketRef = useRef<Socket | null>(null);
-  // Track if we've initialized the connection to prevent loops
-  const connectionInitialized = useRef(false);
 
-  // Instead of using useCallback, we'll use a regular function and call it directly in useEffect
-  const setupSocketConnection = () => {
-    if (!isAuthenticated || !currentUser || socketRef.current) {
-      return;
-    }
+  // Create system message helper function
+  const createSystemMessage = useCallback((text: string) => ({
+    id: `system-${Date.now()}-${uuidv4()}`,
+    text,
+    sender: 'system',
+    timestamp: new Date()
+  }), []);
 
-    console.log('Setting up new socket connection');
-    
-    // Only attempt to connect if we have a token
-    if (!currentUser.token) {
-      console.error('No authentication token available');
-      setConnectionError('No authentication token available. Please log in again.');
+  // Consolidated socket connection logic
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser?.token) {
+      if (!loading) return;
+      
+      setConnectionError(!currentUser?.token ? 
+        'No authentication token available. Please log in again.' : 
+        'Please log in to join the chat');
       setLoading(false);
       return;
     }
 
-    // Add debug logging for the token
-    console.log('Using token:', currentUser.token);
-    console.log('Using JWT_SECRET:', process.env.NEXT_PUBLIC_JWT_SECRET);
-    console.log('NEXT_PUBLIC_SOCKET_URL:', window.location.hostname);
+    // Clean up previous connection if it exists
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
 
-    const newSocket = io(window.location.hostname, {
+    console.log('Connecting to chat server...');
+    setLoading(true);
+    
+    const socket = io(window.location.hostname, {
       path: '/socket.io/',
       auth: {
         token: currentUser.token,
-        roomId: currentRoomId
+        roomId: roomIdRef.current
       },
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       timeout: 10000,
       transports: ['websocket', 'polling'],
     });
+    
+    socketRef.current = socket;
 
-    socketRef.current = newSocket;
-    setSocket(newSocket);
-
-    console.log('Token being sent:', currentUser.token);
-
-    newSocket.on('connect', () => {
+    // Socket event handlers
+    socket.on('connect', () => {
+      console.log(roomIdRef.current);
       console.log('Socket connected successfully');
       setConnectionError(null);
       setLoading(false);
+    });
+
+    socket.on('room_created', (data: { roomId: string }) => {
+      console.log('Room created by server:', data.roomId);
+      roomIdRef.current = data.roomId;
+      setRoomName(`Chat Room #${data.roomId.substring(0, 8)}`);
       
-      setMessages(prev => [...prev, {
-        id: `system-${Date.now()}`,
-        text: `You joined the chat`,
-        sender: 'system',
-        timestamp: new Date()
-      }]);
-    })
+      // Update URL for sharing
+      const url = new URL(window.location.href);
+      url.searchParams.set('roomId', data.roomId);
+      window.history.pushState({}, '', url.toString());
+    });
 
-    newSocket.on('connect_error', (err) => {
+    socket.on('room_data', (data: { messages: ChatMessage[], users: User[] }) => {
+      setMessages(data.messages || []);
+      setUsers(data.users || []);
+    });
+
+    socket.on('connect_error', (err) => {
       console.error('Connection error:', err.message);
-      console.error('Connection error object:', err);
-
+      
+      let errorMessage = 'Connection error. Please try again.';
       if (err.message.includes('Authentication error')) {
-        setConnectionError('Authentication failed. Please try logging out and back in.');
+        errorMessage = 'Authentication failed. Please try logging out and back in.';
       } else if (err.message.includes('WebSocket')) {
-        setConnectionError('Connection failed. Please check your network and try again.');
+        errorMessage = 'Connection failed. Please check your network and try again.';
       } else {
-        setConnectionError(`Connection error: ${err.message}`);
+        errorMessage = `Connection error: ${err.message}`;
       }
+      
+      setConnectionError(errorMessage);
       setLoading(false);
     });
 
-    newSocket.on('disconnect', (reason) => {
+    socket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
-      if (reason === 'io server disconnect') {
-        setConnectionError('Disconnected by server. Please try reconnecting.');
-      } else if (reason === 'transport close') {
-        setConnectionError('Connection lost. Server might be unavailable.');
+      if (!['io client disconnect', 'transport close'].includes(reason)) {
+        setConnectionError(
+          reason === 'io server disconnect' 
+            ? 'Disconnected by server. Please try reconnecting.' 
+            : 'Connection lost. Server might be unavailable.'
+        );
       }
     });
 
-    newSocket.on('room_data', (data: { messages: ChatMessage[], users: User[] }) => {
-      // Add deduplication logic
-      const uniqueUsers = Array.from(new Set(data.users.map(user => user.id)))
-        .map(id => data.users.find(user => user.id === id))
-        .filter(Boolean) as User[];
-      setMessages(data.messages || []);
-      setUsers(uniqueUsers);
-    });
-
-    newSocket.on('message', (message: ChatMessage) => {
+    socket.on('message', (message: ChatMessage) => {
       setMessages(prev => {
-        // Check if message already exists
-        const messageExists = prev.some(msg => msg.id === message.id);
-        return messageExists ? prev : [...prev, message];
+        // Only add if message doesn't exist already (using Set for more efficient lookup)
+        const messageIds = new Set(prev.map(msg => msg.id));
+        return messageIds.has(message.id) ? prev : [...prev, message];
       });
     });
 
-    newSocket.on('user_joined', (user: User) => {
-      // Check if user already exists before adding
-      setUsers(prev => {
-        const userExists = prev.some(u => u.id === user.id);
-        return userExists ? prev : [...prev, user];
-      });
-      setMessages(prev => [...prev, {
-        id: `system-${Date.now()}`,
-        text: `${user.username} joined the chat`,
-        sender: 'system',
-        timestamp: new Date()
-      }]);
-    });
-
-    newSocket.on('user_left', (userId: string) => {
-      setUsers(prev => prev.filter(u => u.id !== userId));
+    socket.on('user_joined', (user: User) => {
+      setUsers(prev => [...prev, user]);
       
-      setMessages(prev => {
-        const userLeft = users.find(u => u.id === userId);
-        const username = userLeft ? userLeft.username : 'A user';
-        return [...prev, {
-          id: `system-${Date.now()}`,
-          text: `${username} left the chat`,
-          sender: 'system',
-          timestamp: new Date()
-        }];
+      // Add system message about user joining
+      setMessages(prevMsgs => [
+        ...prevMsgs, 
+        createSystemMessage(`${user.username} joined the chat`)
+      ]);
+    });
+
+    socket.on('user_left', (userId: string) => {
+      setUsers(prev => {
+        // Capture username before removing
+        const userLeft = prev.find(u => u.id === userId);
+        const username = userLeft?.username || 'A user';
+        
+        // Add system message about user leaving
+        setMessages(prevMsgs => [
+          ...prevMsgs, 
+          createSystemMessage(`${username} left the chat`)
+        ]);
+        
+        return prev.filter(u => u.id !== userId);
       });
     });
 
     return () => {
-      if (newSocket.connected) {
-        newSocket.disconnect();
-      }
+      socket.disconnect();
       socketRef.current = null;
     };
-  };
+  }, [isAuthenticated, currentUser, retryCount, createSystemMessage]);
 
-  // Use a separate useEffect for the initial setup
+  // Auto-scroll when messages change
   useEffect(() => {
-    // Only initialize if authenticated and not already initialized
-    if (isAuthenticated && currentUser && !connectionInitialized.current) {
-      setLoading(true);
-      connectionInitialized.current = true;
-      const cleanup = setupSocketConnection();
-      
-      // Reset on unmount
-      return () => {
-        if (cleanup) cleanup();
-        connectionInitialized.current = false;
-      };
-    }
-  }, [isAuthenticated, currentUser]);
-
-  // Use a separate useEffect for retry logic
-  useEffect(() => {
-    if (retryCount > 0) {
-      // Clean up existing connection
-      if (socketRef.current) {
-        if (socketRef.current.connected) {
-          socketRef.current.disconnect();
-        }
-        socketRef.current = null;
-      }
-      
-      setLoading(true);
-      const cleanup = setupSocketConnection();
-      
-      return () => {
-        if (cleanup) cleanup();
-      };
-    }
-  }, [retryCount]);
-
-  useEffect(() => {
-    scrollToBottom();
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    
+    // Small timeout to ensure DOM has updated
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timeoutId);
   }, [messages]);
 
+  // Memoize message variants
+  const messageVariants = useMemo(() => ({
+    hidden: { opacity: 0, y: 10, scale: 0.98 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      scale: 1,
+      transition: { duration: 0.3 }
+    },
+    exit: { 
+      opacity: 0, 
+      scale: 0.95, 
+      transition: { duration: 0.2 }
+    }
+  }), []);
+
+  // Optimized handlers
+  const handleRetryConnection = useCallback(() => {
+    setRetryCount(prev => prev + 1);
+  }, []);
+
+  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+  }, []);
+
   const sendMessage = useCallback(() => {
-    if (socket && message.trim()) {
-      socket.emit('message', {
+    if (socketRef.current && message.trim()) {
+      socketRef.current.emit('message', {
         text: message,
         sender: currentUser?.username
       });
       setMessage("");
     }
-  }, [socket, message, currentUser]);
+  }, [message, currentUser?.username]);
 
-  const scrollToBottom = (smooth = true) => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
-    }, 100);
-  };
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter") sendMessage();
+  }, [sendMessage]);
 
-  const handleRetryConnection = () => {
-    setRetryCount(prev => prev + 1);
-  };
-
-  const messageVariants = useMemo(() => ({
-    hidden: { opacity: 0, y: 20, scale: 0.95 },
-    visible: { opacity: 1, y: 0, scale: 1 },
-    exit: { opacity: 0, y: -20, scale: 0.95 }
-  }), []);
-
-  // Add message input handler without causing full re-renders
-  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setMessage(e.target.value);
-  }, []);
-
+  // Render logic - optimized conditionals
   if (loading) {
     return (
       <Center height="100%">
@@ -282,11 +262,12 @@ export const ChatRoom = React.memo(({ roomId }: { roomId: string }) => {
     );
   }
 
+  // Main chat UI component
   return (
     <Flex direction="column" width="100%" height="100%" overflow="hidden">
       <Flex direction="column" px={6} py={4} borderBottom="1px solid" borderColor="gray.200">
         <Text fontSize="xl" fontWeight="bold">
-          {roomName} {currentRoomId && `(ID: ${currentRoomId})`}
+          {roomName} {roomIdRef.current && <Text as="span" color="gray.500" fontSize="md">(ID: {roomIdRef.current.substring(0, 8)})</Text>}
         </Text>
         <Flex mt={2}>
           <Text fontSize="sm" color="gray.500" mr={2}>
@@ -301,46 +282,38 @@ export const ChatRoom = React.memo(({ roomId }: { roomId: string }) => {
       <MotionBox flex="1" overflow="auto" p={4} ref={scrollContainerRef}>
         <VStack align="stretch">
           <AnimatePresence initial={false}>
-            {messages.map((msg, index) => (
-              <MotionFlex
-                key={`${msg.id}-${index}`}
-                maxWidth="80%"
-                alignSelf={msg.sender === 'system' 
-                  ? 'center' 
-                  : msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString() 
-                    ? 'flex-end' 
-                    : 'flex-start'
-                }
-                variants={messageVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <Box
-                  bg={msg.sender === 'system' 
-                    ? "gray.300" 
-                    : msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString() 
-                      ? "blue.500" 
-                      : "gray.100"
-                  }
-                  color={msg.sender === 'system' 
-                    ? "gray.700" 
-                    : msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString() 
-                      ? "white" 
-                      : "gray.800"
-                  }
-                  px={4}
-                  py={2}
-                  borderRadius="lg"
-                  boxShadow="sm"
-                  maxWidth={msg.sender === 'system' ? "60%" : "100%"}
+            {messages.map((msg) => {
+              const isCurrentUser = msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString();
+              const isSystem = msg.sender === 'system';
+              
+              return (
+                <MotionFlex
+                  key={msg.id}
+                  maxWidth="80%"
+                  alignSelf={isSystem ? 'center' : isCurrentUser ? 'flex-end' : 'flex-start'}
+                  variants={messageVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  layout
+                  mb={2}
                 >
-                  {msg.sender !== 'system' && <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>}
-                  <Text>{msg.text}</Text>
-                  <Text fontSize="xs" textAlign="right">{new Date(msg.timestamp).toLocaleTimeString()}</Text>
-                </Box>
-              </MotionFlex>
-            ))}
+                  <Box
+                    bg={isSystem ? "gray.300" : isCurrentUser ? "blue.500" : "gray.100"}
+                    color={isSystem ? "gray.700" : isCurrentUser ? "white" : "gray.800"}
+                    px={4}
+                    py={2}
+                    borderRadius="lg"
+                    boxShadow="sm"
+                    maxWidth={isSystem ? "60%" : "100%"}
+                  >
+                    {!isSystem && <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>}
+                    <Text>{msg.text}</Text>
+                    <Text fontSize="xs" textAlign="right">{new Date(msg.timestamp).toLocaleTimeString()}</Text>
+                  </Box>
+                </MotionFlex>
+              );
+            })}
           </AnimatePresence>
           <Box ref={messagesEndRef} />
         </VStack>
@@ -352,7 +325,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId: string }) => {
             placeholder="Type your message..."
             value={message}
             onChange={handleMessageChange}
-            onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+            onKeyPress={handleKeyPress}
             borderRadius="full"
           />
           <IconButton

@@ -16,34 +16,54 @@ import { formatDistanceToNow } from "date-fns";
 const VStack = (props: any) => <Flex direction="column" {...props} />;
 const HStack = (props: any) => <Flex direction="row" {...props} />;
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 const ITEMS_PER_PAGE = 10;
 
-interface Session {
+interface Message {
+  id: string;
+  timestamp: string;
+  role: string;
+  value: string;
+}
+
+interface Room {
   id: string;
   created_at: string;
-  messages: { id: string; timestamp: string; role: string; value: string }[];
+  messages: Message[];
+  message_count: number;
 }
 
 export const ListRooms = () => {
   const { isAuthenticated } = useAuth();
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeSession, setActiveSession] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [activeRoom, setActiveRoom] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const observer = useRef<IntersectionObserver | null>(null);
 
-  const fetchSessions = async (currentPage: number) => {
+  const fetchRooms = async (currentPage: number) => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`/api/chat/get_sessions?page=${currentPage}&limit=${ITEMS_PER_PAGE}`);
-      if (!res.ok) throw new Error("Failed to fetch sessions");
+      const res = await fetch(`/api/chat/get_rooms?page=${currentPage}&limit=${ITEMS_PER_PAGE}`);
+      if (!res.ok) throw new Error("Failed to fetch rooms");
+      
       const data = await res.json();
-      setSessions(prev => currentPage === 1 ? data.sessions : [...prev, ...data.sessions]);
-      setHasMore(data.sessions.length === ITEMS_PER_PAGE);
+      
+      // Check if the data has the expected structure
+      if (!data || !Array.isArray(data.rooms)) {
+        console.error("Unexpected data format:", data);
+        setError("Failed to load rooms: unexpected data format");
+        return;
+      }
+      
+      setRooms(prev => currentPage === 1 ? data.rooms : [...prev, ...data.rooms]);
+      setHasMore(data.rooms.length === ITEMS_PER_PAGE);
     } catch (err) {
-      console.error("Error fetching sessions:", err);
+      console.error("Error fetching rooms:", err);
+      setError(err instanceof Error ? err.message : "Failed to load rooms");
     } finally {
       setLoading(false);
     }
@@ -51,11 +71,11 @@ export const ListRooms = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchSessions(page);
+      fetchRooms(page);
     }
   }, [isAuthenticated, page]);
 
-  const lastSessionRef = useCallback((node: HTMLDivElement) => {
+  const lastRoomRef = useCallback((node: HTMLDivElement) => {
     if (loading || !hasMore) return;
     if (observer.current) observer.current.disconnect();
 
@@ -68,10 +88,10 @@ export const ListRooms = () => {
     if (node) observer.current.observe(node);
   }, [loading, hasMore]);
 
-  const handleSessionClick = (session: Session) => {
-    setActiveSession(session.id);
-    window.history.pushState({}, '', `/?view=chat&session=${session.id}`);
-    window.dispatchEvent(new CustomEvent('sessionChange', { detail: session.id }));
+  const handleRoomClick = (room: Room) => {
+    setActiveRoom(room.id);
+    window.history.pushState({}, '', `/?view=chat&roomId=${room.id}`);
+    window.dispatchEvent(new CustomEvent('roomChange', { detail: room.id }));
   };
 
   if (!isAuthenticated) return null;
@@ -83,20 +103,29 @@ export const ListRooms = () => {
       </Flex>
 
       <Box flex="1" overflowY="auto" px={4} py={2}>
-        {sessions.map((session, index) => {
-          const lastMessage = session.messages[0]?.value || "Start a conversation...";
-          const messageTime = session.messages[0]?.timestamp || session.created_at;
-          const isActive = activeSession === session.id;
+        {error && (
+          <Text color="red.500" p={4} textAlign="center">
+            {error}
+          </Text>
+        )}
+        
+        {Array.isArray(rooms) && rooms.map((room, index) => {
+          const messageArray = Array.isArray(room.messages) ? room.messages : [];
+          const lastMessage = messageArray[0]?.value || "Start a conversation...";
+          const messageTime = messageArray[0]?.timestamp || room.created_at;
+          const isActive = activeRoom === room.id;
+          const messageCount = room.message_count || messageArray.length;
 
           return (
             <MotionBox
-              key={session.id}
+              key={room.id}
               mb={2}
               borderBottom="1px solid"
               borderColor="gray.200"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.2 }}
+              ref={index === rooms.length - 1 ? lastRoomRef : undefined}
             >
               <Box
                 p={3}
@@ -104,12 +133,12 @@ export const ListRooms = () => {
                 bg={isActive ? 'blue.50' : 'transparent'}
                 _hover={{ bg: isActive ? 'blue.50' : 'gray.100' }}
                 cursor="pointer"
-                onClick={() => handleSessionClick(session)}
+                onClick={() => handleRoomClick(room)}
               >
                 <VStack align="start" gap={1}>
                   <HStack justify="space-between" width="100%">
                     <Text fontWeight="medium">
-                      Room #{session.id}
+                      Room #{room.id}
                     </Text>
                     <Text fontSize="xs" color="gray.500">
                       {formatDistanceToNow(new Date(messageTime), { addSuffix: true })}
@@ -119,9 +148,9 @@ export const ListRooms = () => {
                     <Text fontSize="sm" color="gray.500" flex={1}>
                       {lastMessage}
                     </Text>
-                    {session.messages.length > 0 && (
+                    {messageCount > 0 && (
                       <Badge colorScheme={isActive ? 'blue' : 'gray'} variant="subtle" fontSize="xs">
-                        {session.messages.length} message{session.messages.length !== 1 ? 's' : ''}
+                        {messageCount} message{messageCount !== 1 ? 's' : ''}
                       </Badge>
                     )}
                   </HStack>
@@ -131,7 +160,7 @@ export const ListRooms = () => {
           );
         })}
 
-        <div ref={lastSessionRef} style={{ height: '1px' }} />
+        {/* Separate ref element removed since we're using ref on the last item */}
 
         {loading && (
           <Flex justify="center" py={4}>
@@ -139,15 +168,15 @@ export const ListRooms = () => {
           </Flex>
         )}
 
-        {!hasMore && sessions.length > 0 && (
+        {!hasMore && rooms.length > 0 && (
           <Text py={4} color="gray.500" textAlign="center">
-            No more conversations to load
+            No more rooms to load
           </Text>
         )}
 
-        {!loading && sessions.length === 0 && (
+        {!loading && !error && rooms.length === 0 && (
           <Text py={4} color="gray.500" textAlign="center">
-            No conversations yet
+            No rooms yet
           </Text>
         )}
       </Box>

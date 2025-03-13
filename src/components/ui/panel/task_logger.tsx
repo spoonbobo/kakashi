@@ -17,7 +17,7 @@ interface TaskLoggerProps {
   };
 }
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 const TaskLogger: React.FC<TaskLoggerProps> = ({ 
   title = "Task Logger", 

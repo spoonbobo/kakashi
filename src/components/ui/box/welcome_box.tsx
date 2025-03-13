@@ -6,7 +6,7 @@ interface WelcomeBoxProps {
   greeting: string;
 }
 
-const MotionBox = motion(Box);
+const MotionBox = motion.create(Box);
 
 export default function WelcomeBox({ greeting }: WelcomeBoxProps) {
   const { isAuthenticated } = useAuth();

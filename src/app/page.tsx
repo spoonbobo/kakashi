@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Text, Box } from '@chakra-ui/react';
-import Navbar from '../components/ui/navbar';
+import { Navbar } from '../components/ui/navbar';
 import WelcomeBox from '../components/ui/box/welcome_box';
 import AgentTaskPanel from '../components/ui/panel/agent_task_panel';
 import { ResizableLayoutV } from '@/components/ui/stretch/resizeable_layoutV';
@@ -25,39 +25,51 @@ export default function Home() {
     const handleRouteChange = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const view = urlParams.get('view');
+      const roomId = urlParams.get('roomId');
       const session = urlParams.get('session');
 
-      if (view === 'chat' && session) {
+      if (view === 'chat' && (roomId || session)) {
         setActiveView('chat');
-        setSessionId(session);
-      } else {
+        setSessionId(roomId || session || null);
+      } else if (view === 'conversations') {
         setActiveView('conversations');
+        setSessionId(null);
+      } else if (view) {
+        setActiveView(view as any);
         setSessionId(null);
       }
     };
 
     handleRouteChange();
 
-    window.addEventListener('popstate', handleRouteChange);
+    const popstateHandler = () => handleRouteChange();
+    window.addEventListener('popstate', popstateHandler);
 
     return () => {
-      window.removeEventListener('popstate', handleRouteChange);
+      window.removeEventListener('popstate', popstateHandler);
     };
   }, []);
 
   useEffect(() => {
+    // Listen for both events
     const handleSessionChange = (event: CustomEvent) => {
       setActiveView('chat');
       setSessionId(event.detail);
     };
 
+    const handleRoomChange = (event: CustomEvent) => {
+      setActiveView('chat');
+      setSessionId(event.detail);
+    };
+
     window.addEventListener('sessionChange', handleSessionChange as EventListener);
+    window.addEventListener('roomChange', handleRoomChange as EventListener);
 
     return () => {
       window.removeEventListener('sessionChange', handleSessionChange as EventListener);
+      window.removeEventListener('roomChange', handleRoomChange as EventListener);
     };
   }, []);
-
 
   const handleConversationsClick = () => {
     window.history.pushState({}, '', '/?view=conversations');
@@ -108,6 +120,10 @@ export default function Home() {
     fetchGreeting();
   }, []);
 
+  useEffect(() => {
+    console.log('Active view:', activeView);
+  }, [activeView]);
+
   return (
     <Box
       position="relative"
@@ -140,10 +156,10 @@ export default function Home() {
        <ResizableLayoutV
             leftComponent={
               activeView === 'chat' ? <ChatRoom roomId={sessionId || ''} /> :
+              activeView === 'conversations' ? <ListRooms /> :
               activeView === 'tasks' ? <Tasks /> :
               activeView === 'approvals' ? <Approvals /> :
-              activeView === 'conversations' ? <ListRooms /> :
-              <ChatRoom roomId={sessionId || ''} />
+              <ListRooms/>
             }
             rightComponent={
             <ResizableLayoutH

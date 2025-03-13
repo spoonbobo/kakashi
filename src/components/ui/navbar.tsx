@@ -1,7 +1,8 @@
 import { Box, HStack, Text, Icon, Flex, IconButton} from '@chakra-ui/react';
 import { Tooltip } from "@/components/ui/tooltip"
-import { FaCog, FaComment, FaCheck , FaTasks, FaPlus, FaQuestionCircle, FaDiscord, FaSpeakerDeck, FaAngleDoubleDown, FaAviato, FaDiagnoses, FaUsers, FaRestroom } from 'react-icons/fa';
+import { FaCog, FaCheck , FaTasks, FaPlus, FaQuestionCircle, FaUsers } from 'react-icons/fa';
 import { AuthPopover } from './popover/auth_popover';
+import { memo } from 'react';
 
 interface NavbarProps {
     onConversationsClick: () => void;
@@ -12,7 +13,7 @@ interface NavbarProps {
     onFeedbackClick: () => void;
 }
 
-export default function Navbar( { 
+export const Navbar = memo(function Navbar( { 
     onConversationsClick, 
     onNewChatClick, 
     onTasksClick, 
@@ -25,6 +26,8 @@ export default function Navbar( {
         window.dispatchEvent(new Event('newChat'));
         onNewChatClick();
     };
+
+    console.log('User (from Navbar):', "hi");
 
     return (
         <Box
@@ -130,4 +133,6 @@ export default function Navbar( {
             </Flex>
         </Box>
     );
-}
+});
+
+Navbar.displayName = 'Navbar';

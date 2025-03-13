@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Portal, Button, Input, Popover, Text, IconButton, Icon } from '@chakra-ui/react';
 import { useAuth } from '@/auth/context';
 import { FaSignInAlt, FaSignOutAlt } from 'react-icons/fa';
 
-export const AuthPopover = () => {
+export const AuthPopover = memo(() => {
   const { isAuthenticated, user, login, logout } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +16,7 @@ export const AuthPopover = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch('/api/auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,4 +103,6 @@ export const AuthPopover = () => {
       </Portal>
     </Popover.Root>
   );
-};
+});
+
+AuthPopover.displayName = 'AuthPopover';
