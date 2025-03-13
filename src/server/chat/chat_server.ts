@@ -2,29 +2,19 @@ import { Server } from 'socket.io';
 import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { Server as HttpServer } from 'http';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import express from 'express';
+import pkg from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import path from 'path';
+dotenv.config();
+const { JwtPayload } = pkg;
 
-// Load environment variables from .env file
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 // Log environment variables for debugging
 console.log('Loading environment variables for socket server');
 console.log('JWT_SECRET available:', !!process.env.JWT_SECRET);
 console.log('JWT_SECRET length:', process.env.JWT_SECRET?.length || 0);
 
-// If JWT_SECRET is not available, try to load it from a different source
-if (!process.env.JWT_SECRET) {
-  console.error('JWT_SECRET not found in environment variables. Authentication will fail.');
-  // You might want to set a default for development
-  if (process.env.NODE_ENV === 'development') {
-    process.env.JWT_SECRET = 'development_secret_key_for_testing_only';
-    console.log('Using development JWT_SECRET');
-  }
-}
 
 interface User {
   id: string;
@@ -71,19 +61,10 @@ function debugToken(token: string): void {
 // Then update the verifyToken function to use it
 const verifyToken = (token: string): DecodedToken | null => {
   try {
-    console.log('Verifying token:', token);
-    console.log('Using JWT secret:', process.env.JWT_SECRET ? 'Available' : 'Not available');
-    
-    // Debug the token
-    debugToken(token);
-    
-    // Make sure JWT_SECRET is defined
-    if (!process.env.JWT_SECRET) {
-      throw new Error('JWT_SECRET is not defined');
-    }
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
-    console.log('Token verified successfully:', decoded);
+    // Use the exact same string as in login route
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!, {
+      algorithms: ['HS256']
+    }) as DecodedToken;
     return decoded;
   } catch (error: unknown) {
     console.error('Token verification failed:', error instanceof Error ? error.message : 'Unknown error');
@@ -113,6 +94,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
 
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
+    console.log('Received token:', token);
     
     if (!token) {
       console.error('Authentication error: No token provided');
@@ -120,9 +102,6 @@ export const setupChatServer = (httpServer: HttpServer) => {
     }
     
     try {
-      // Log the token for debugging
-      console.log('Received token:', token.substring(0, 10) + '...');
-      
       const decoded = verifyToken(token);
       
       if (!decoded) {
@@ -130,6 +109,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
         return next(new Error('Authentication error: Invalid token'));
       }
       
+      console.log('Decoded token:', decoded);
       // Store user info in socket
       socket.data.user = {
         id: decoded.userId,
@@ -203,9 +183,6 @@ const httpServer = app.listen(3001, () => {
   console.log('Chat server is running on port 3001');
 });
 
-// Setup the chat server
-setupChatServer(httpServer);
-
 // Add this near the bottom of your file, before starting the server
 console.log('Socket server environment:');
 console.log('JWT_SECRET length:', process.env.JWT_SECRET?.length || 0);
@@ -213,3 +190,6 @@ console.log('JWT_SECRET preview:', process.env.JWT_SECRET ?
   `${process.env.JWT_SECRET.substring(0, 3)}...${process.env.JWT_SECRET.substring(process.env.JWT_SECRET.length - 3)}` : 
   'not set');
 console.log('NODE_ENV:', process.env.NODE_ENV); 
+
+// Setup the chat server
+setupChatServer(httpServer);

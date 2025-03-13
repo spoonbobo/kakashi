@@ -5,10 +5,9 @@ import { Text, Box } from '@chakra-ui/react';
 import Navbar from '../components/ui/navbar';
 import WelcomeBox from '../components/ui/box/welcome_box';
 import AgentTaskPanel from '../components/ui/panel/agent_task_panel';
-import { ChatInterface } from '../components/ui/chat/chat_interface';
 import { ResizableLayoutV } from '@/components/ui/stretch/resizeable_layoutV';
 import { ResizableLayoutH } from '@/components/ui/stretch/resizeable_layoutH';
-import { Conversations } from '../components/ui/chat/chat_history';
+import { ListRooms } from '../components/ui/chat/list_rooms';
 import { Tasks } from '../components/ui/tasks/task_history';
 import { Approvals } from '../components/ui/approvals/approval_history';
 import TaskLogger from '../components/ui/panel/task_logger';
@@ -143,7 +142,7 @@ export default function Home() {
               activeView === 'chat' ? <ChatRoom roomId={sessionId || ''} /> :
               activeView === 'tasks' ? <Tasks /> :
               activeView === 'approvals' ? <Approvals /> :
-              activeView === 'conversations' ? <Conversations /> :
+              activeView === 'conversations' ? <ListRooms /> :
               <ChatRoom roomId={sessionId || ''} />
             }
             rightComponent={

@@ -2,6 +2,7 @@
   "name": "webcan",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -22,6 +23,7 @@
     "@storybook/addon-themes": "^8.6.4",
     "bcryptjs": "^3.0.2",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "framer-motion": "^12.5.0",
     "jsonwebtoken": "^9.0.2",
@@ -72,7 +74,7 @@
     "playwright": "^1.51.0",
     "storybook": "^8.6.4",
     "tailwindcss": "^4",
-    "typescript": "^5",
+    "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.1",
     "vitest": "^3.0.8"
   },

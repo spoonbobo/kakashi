@@ -10,7 +10,6 @@ export const AuthPopover = () => {
   const [error, setError] = useState('');
 
   console.log('User:', user);
-  console.log('isAuthenticated:', isAuthenticated);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -26,7 +25,6 @@ export const AuthPopover = () => {
       });
 
       const data = await response.json();
-      console.log('API Response:', data);
 
       if (!response.ok) {
         // Handle API errors
@@ -44,7 +42,6 @@ export const AuthPopover = () => {
         username: data.user.username,
         token: data.token
       };
-      console.log('Calling login with:', loginData);
 
       // Update the auth context
       login(loginData);
@@ -53,7 +50,6 @@ export const AuthPopover = () => {
       setUsername('');
       setPassword('');
     } catch (error) {
-      console.error('Login Error:', error);
       setError(error instanceof Error ? error.message : 'Login failed');
     }
   };

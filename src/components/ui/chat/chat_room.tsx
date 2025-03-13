@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import { Box, Text, Input, Flex, VStack, IconButton } from "@chakra-ui/react";
+import { Box, Text, Input, Flex, VStack, IconButton, Spinner, Center, Button } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaPaperPlane } from "react-icons/fa";
+import { FaPaperPlane, FaSync } from "react-icons/fa";
 import { useAuth } from "@/auth/context";
+import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
@@ -31,51 +36,74 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [roomName, setRoomName] = useState<string>("Chat Room");
+  const [retryCount, setRetryCount] = useState(0);
+  
+  // Use an actual room ID or generate one if not provided
+  const currentRoomId = roomId || uuidv4();
 
-  useEffect(() => {
-    if (!isAuthenticated || !currentUser) {
+  // Keep track of socket connection state to prevent multiple connections
+  const socketRef = useRef<Socket | null>(null);
+  // Track if we've initialized the connection to prevent loops
+  const connectionInitialized = useRef(false);
+
+  // Instead of using useCallback, we'll use a regular function and call it directly in useEffect
+  const setupSocketConnection = () => {
+    if (!isAuthenticated || !currentUser || socketRef.current) {
+      return;
+    }
+
+    console.log('Setting up new socket connection');
+    
+    // Only attempt to connect if we have a token
+    if (!currentUser.token) {
+      console.error('No authentication token available');
+      setConnectionError('No authentication token available. Please log in again.');
       setLoading(false);
       return;
     }
 
-    if (!roomId) {
-      setConnectionError('Room ID is required');
-      setLoading(false);
-      return;
-    }
-
+    // Add debug logging for the token
+    console.log('Using token:', currentUser.token);
+    console.log('Using JWT_SECRET:', process.env.NEXT_PUBLIC_JWT_SECRET);
+    
     const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001', {
       auth: {
         token: currentUser.token,
-        roomId: roomId
+        roomId: currentRoomId
       },
-      reconnectionAttempts: 3,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
       timeout: 10000,
       transports: ['websocket', 'polling'],
     });
 
+    socketRef.current = newSocket;
+    setSocket(newSocket);
+
+    console.log('Token being sent:', currentUser.token);
+
     newSocket.on('connect', () => {
       console.log('Socket connected successfully');
       setConnectionError(null);
-    });
+      setLoading(false);
+      
+      setMessages(prev => [...prev, {
+        id: `system-${Date.now()}`,
+        text: `You joined the chat`,
+        sender: 'system',
+        timestamp: new Date()
+      }]);
+    })
 
     newSocket.on('connect_error', (err) => {
-      console.error('Connection error:', {
-        message: err.message,
-        ...(err as any).type && { type: (err as any).type },
-        ...(err as any).description && { description: (err as any).description },
-        stack: err.stack,
-        auth: newSocket.auth,
-        query: newSocket.io.opts.query,
-        headers: newSocket.io.opts.extraHeaders
-      });
-
+      console.error('Connection error:', err.message);
+      
       if (err.message.includes('Authentication error')) {
-        setConnectionError(`Authentication failed. Please verify your token is valid. Token: ${currentUser.token}`);
+        setConnectionError('Authentication failed. Please try logging out and back in.');
       } else if (err.message.includes('WebSocket')) {
         setConnectionError('Connection failed. Please check your network and try again.');
       } else {
-        setConnectionError('Connection error. Please try again later.');
+        setConnectionError(`Connection error: ${err.message}`);
       }
       setLoading(false);
     });
@@ -84,33 +112,34 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
       console.log('Socket disconnected:', reason);
       if (reason === 'io server disconnect') {
         setConnectionError('Disconnected by server. Please try reconnecting.');
+      } else if (reason === 'transport close') {
+        setConnectionError('Connection lost. Server might be unavailable.');
       }
     });
 
-    newSocket.on('auth_error', (err) => {
-      console.error('Detailed authentication error:', {
-        message: err.message,
-        ...(err as any).type && { type: (err as any).type },
-        ...(err as any).description && { description: (err as any).description },
-        stack: err.stack,
-        auth: newSocket.auth,
-        query: newSocket.io.opts.query
-      });
-      setConnectionError('Authentication failed. Please verify your credentials.');
-      setLoading(false);
-    });
-
     newSocket.on('room_data', (data: { messages: ChatMessage[], users: User[] }) => {
-      setMessages(data.messages);
-      setUsers(data.users);
+      // Add deduplication logic
+      const uniqueUsers = Array.from(new Set(data.users.map(user => user.id)))
+        .map(id => data.users.find(user => user.id === id))
+        .filter(Boolean) as User[];
+      setMessages(data.messages || []);
+      setUsers(uniqueUsers);
     });
 
     newSocket.on('message', (message: ChatMessage) => {
-      setMessages(prev => [...prev, message]);
+      setMessages(prev => {
+        // Check if message already exists
+        const messageExists = prev.some(msg => msg.id === message.id);
+        return messageExists ? prev : [...prev, message];
+      });
     });
 
     newSocket.on('user_joined', (user: User) => {
-      setUsers(prev => [...prev, user]);
+      // Check if user already exists before adding
+      setUsers(prev => {
+        const userExists = prev.some(u => u.id === user.id);
+        return userExists ? prev : [...prev, user];
+      });
       setMessages(prev => [...prev, {
         id: `system-${Date.now()}`,
         text: `${user.username} joined the chat`,
@@ -121,26 +150,62 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
 
     newSocket.on('user_left', (userId: string) => {
       setUsers(prev => prev.filter(u => u.id !== userId));
-      const user = users.find(u => u.id === userId);
-      if (user) {
-        setMessages(prev => [...prev, {
+      
+      setMessages(prev => {
+        const userLeft = users.find(u => u.id === userId);
+        const username = userLeft ? userLeft.username : 'A user';
+        return [...prev, {
           id: `system-${Date.now()}`,
-          text: `${user.username} left the chat`,
+          text: `${username} left the chat`,
           sender: 'system',
           timestamp: new Date()
-        }]);
-      }
+        }];
+      });
     });
-
-    setSocket(newSocket);
-    setLoading(false);
 
     return () => {
       if (newSocket.connected) {
         newSocket.disconnect();
       }
+      socketRef.current = null;
     };
-  }, [isAuthenticated, currentUser, roomId]);
+  };
+
+  // Use a separate useEffect for the initial setup
+  useEffect(() => {
+    // Only initialize if authenticated and not already initialized
+    if (isAuthenticated && currentUser && !connectionInitialized.current) {
+      setLoading(true);
+      connectionInitialized.current = true;
+      const cleanup = setupSocketConnection();
+      
+      // Reset on unmount
+      return () => {
+        if (cleanup) cleanup();
+        connectionInitialized.current = false;
+      };
+    }
+  }, [isAuthenticated, currentUser]);
+
+  // Use a separate useEffect for retry logic
+  useEffect(() => {
+    if (retryCount > 0) {
+      // Clean up existing connection
+      if (socketRef.current) {
+        if (socketRef.current.connected) {
+          socketRef.current.disconnect();
+        }
+        socketRef.current = null;
+      }
+      
+      setLoading(true);
+      const cleanup = setupSocketConnection();
+      
+      return () => {
+        if (cleanup) cleanup();
+      };
+    }
+  }, [retryCount]);
 
   useEffect(() => {
     scrollToBottom();
@@ -162,6 +227,10 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
     }, 100);
   };
 
+  const handleRetryConnection = () => {
+    setRetryCount(prev => prev + 1);
+  };
+
   const messageVariants = {
     hidden: { opacity: 0, y: 20, scale: 0.95 },
     visible: { opacity: 1, y: 0, scale: 1 },
@@ -169,22 +238,48 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <Center height="100%">
+        <Spinner size="xl" color="blue.500" />
+      </Center>
+    );
   }
 
   if (!isAuthenticated) {
-    return <div>Please log in to join the chat</div>;
+    return <Box p={4}>Please log in to join the chat</Box>;
   }
 
   if (connectionError) {
-    return <Box p={4} color="red.500">{connectionError}</Box>;
+    return (
+      <Center height="100%" flexDirection="column" gap={4} p={4}>
+        <Box 
+          p={4} 
+          bg="red.100" 
+          color="red.700" 
+          borderRadius="md" 
+          borderLeft="4px solid" 
+          borderColor="red.500"
+        >
+          {connectionError}
+        </Box>
+        <Button 
+          colorScheme="blue" 
+          onClick={handleRetryConnection}
+        >
+          <Flex align="center" gap="2">
+            <FaSync />
+            <Text>Retry Connection</Text>
+          </Flex>
+        </Button>
+      </Center>
+    );
   }
 
   return (
     <Flex direction="column" width="100%" height="100%" overflow="hidden">
       <Flex direction="column" px={6} py={4} borderBottom="1px solid" borderColor="gray.200">
         <Text fontSize="xl" fontWeight="bold">
-          {roomName} (ID: {roomId})
+          {roomName} {currentRoomId && `(ID: ${currentRoomId})`}
         </Text>
         <Flex mt={2}>
           <Text fontSize="sm" color="gray.500" mr={2}>
@@ -199,25 +294,41 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
       <MotionBox flex="1" overflow="auto" p={4} ref={scrollContainerRef}>
         <VStack align="stretch">
           <AnimatePresence initial={false}>
-            {messages.map(msg => (
+            {messages.map((msg, index) => (
               <MotionFlex
-                key={msg.id}
+                key={`${msg.id}-${index}`}
                 maxWidth="80%"
-                alignSelf={msg.sender === currentUser?.username || msg.sender === currentUser?.id.toString() ? 'flex-end' : 'flex-start'}
+                alignSelf={msg.sender === 'system' 
+                  ? 'center' 
+                  : msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString() 
+                    ? 'flex-end' 
+                    : 'flex-start'
+                }
                 variants={messageVariants}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
               >
                 <Box
-                  bg={msg.sender === currentUser?.username || msg.sender === currentUser?.id.toString() ? "blue.500" : "gray.100"}
-                  color={msg.sender === currentUser?.username || msg.sender === currentUser?.id.toString() ? "white" : "gray.800"}
+                  bg={msg.sender === 'system' 
+                    ? "gray.300" 
+                    : msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString() 
+                      ? "blue.500" 
+                      : "gray.100"
+                  }
+                  color={msg.sender === 'system' 
+                    ? "gray.700" 
+                    : msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString() 
+                      ? "white" 
+                      : "gray.800"
+                  }
                   px={4}
                   py={2}
                   borderRadius="lg"
                   boxShadow="sm"
+                  maxWidth={msg.sender === 'system' ? "60%" : "100%"}
                 >
-                  <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>
+                  {msg.sender !== 'system' && <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>}
                   <Text>{msg.text}</Text>
                   <Text fontSize="xs" textAlign="right">{new Date(msg.timestamp).toLocaleTimeString()}</Text>
                 </Box>
@@ -239,11 +350,12 @@ export const ChatRoom = ({ roomId }: { roomId: string }) => {
           />
           <IconButton
             aria-label="Send"
-            icon={<FaPaperPlane />}
             colorScheme="blue"
             onClick={sendMessage}
             borderRadius="full"
-          />
+          >
+            <FaPaperPlane />
+          </IconButton>
         </Flex>
       </Box>
     </Flex>

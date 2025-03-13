@@ -1,6 +1,6 @@
 import { Box, HStack, Text, Icon, Flex, IconButton} from '@chakra-ui/react';
 import { Tooltip } from "@/components/ui/tooltip"
-import { FaCog, FaComment, FaCheck , FaTasks, FaPlus, FaQuestionCircle, FaDiscord, FaSpeakerDeck, FaAngleDoubleDown, FaAviato, FaDiagnoses } from 'react-icons/fa';
+import { FaCog, FaComment, FaCheck , FaTasks, FaPlus, FaQuestionCircle, FaDiscord, FaSpeakerDeck, FaAngleDoubleDown, FaAviato, FaDiagnoses, FaUsers, FaRestroom } from 'react-icons/fa';
 import { AuthPopover } from './popover/auth_popover';
 
 interface NavbarProps {
@@ -63,16 +63,16 @@ export default function Navbar( {
                     </IconButton>
                 </Tooltip>
                 
-                <Tooltip content="Conversations">
+                <Tooltip content="Rooms">
                     <IconButton
                        bg="transparent"
                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                       aria-label="Conversations"
+                       aria-label="Rooms"
                        onClick={onConversationsClick}
                     >
-                        <Icon as={FaComment} />
+                        <Icon as={FaUsers} />
                     </IconButton>
                 </Tooltip>
                 <Tooltip content="Tasks">
@@ -99,18 +99,7 @@ export default function Navbar( {
                         <Icon as={FaCheck} />
                     </IconButton>
                 </Tooltip>
-                {/* <Tooltip content="Forum">
-                    <IconButton
-                       bg="transparent"
-                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                       aria-label="Forum"
-                    //    onClick={onForumClick}
-                    >
-                        <Icon as={FaDiagnoses} />
-                    </IconButton>
-                </Tooltip> */}
+
             </HStack>
 
             <Flex align="center">

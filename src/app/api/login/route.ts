@@ -33,10 +33,14 @@ export async function POST(request: Request) {
     }
 
     // Generate JWT token
+    console.log('Generating JWT token');
     const token = jwt.sign(
       { userId: user.id, username: user.username },
       process.env.JWT_SECRET!,
-      { expiresIn: '1h' }
+      { 
+        expiresIn: '1h',
+        algorithm: 'HS256'
+      }
     );
 
     return NextResponse.json({ 

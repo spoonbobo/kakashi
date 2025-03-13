@@ -25,7 +25,7 @@ interface Session {
   messages: { id: string; timestamp: string; role: string; value: string }[];
 }
 
-export const Conversations = () => {
+export const ListRooms = () => {
   const { isAuthenticated } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,7 +79,7 @@ export const Conversations = () => {
   return (
     <Flex direction="column" width="100%" height="100%" overflow="hidden">
       <Flex direction="column" px={6} py={4} borderBottom="1px solid" borderColor="gray.200">
-        <Text fontSize="xl" fontWeight="bold">Chats</Text>
+        <Text fontSize="xl" fontWeight="bold">Rooms</Text>
       </Flex>
 
       <Box flex="1" overflowY="auto" px={4} py={2}>
@@ -109,7 +109,7 @@ export const Conversations = () => {
                 <VStack align="start" gap={1}>
                   <HStack justify="space-between" width="100%">
                     <Text fontWeight="medium">
-                      Chat #{session.id}
+                      Room #{session.id}
                     </Text>
                     <Text fontSize="xs" color="gray.500">
                       {formatDistanceToNow(new Date(messageTime), { addSuffix: true })}
