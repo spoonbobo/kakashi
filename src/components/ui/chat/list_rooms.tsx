@@ -97,7 +97,7 @@ export const ListRooms = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <Flex direction="column" width="100%" height="100%" overflow="hidden">
+    <Flex direction="column" width="100%" height="100%" overflow="hidden" px={20}>
       <Flex direction="column" px={6} py={4} borderBottom="1px solid" borderColor="gray.200">
         <Text fontSize="xl" fontWeight="bold">Rooms</Text>
       </Flex>

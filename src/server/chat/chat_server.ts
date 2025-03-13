@@ -4,6 +4,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { Server as HttpServer } from 'http';
 import jwt from 'jsonwebtoken';
 import express from 'express';
+import { v4 as uuidv4 } from 'uuid';
 
 interface User {
   id: string;
@@ -49,6 +50,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
     }
 
     try {
+      // @ts-expect-error: jwt.verify is not defined
       const decoded = jwt.verify(token, process.env.JWT_SECRET) as { userId: string, username: string };
       socket.data.user = {
         id: decoded.userId,
@@ -60,128 +62,76 @@ export const setupChatServer = (httpServer: HttpServer) => {
     }
   });
 
+  const MAX_INITIAL_MESSAGES = 50;
+  const MAX_STORED_MESSAGES = 500; // Adjust as needed
+
   io.on('connection', async (socket) => {
     const user = socket.data.user;
     let roomId = socket.handshake.auth.roomId;
 
     if (!roomId) {
-      console.log('No roomId provided, creating a new room');
-      console.log('User:', user);
-      try {
-        const newRoomId = await createRoomInDatabase();
-        console.log('New room ID:', newRoomId);
-        // Initialize room data
-        rooms.set(newRoomId, new Set());
-        messageHistory.set(newRoomId, []);
-        
-        // Initialize user connections for this room
-        userConnections.set(newRoomId, new Map());
-        
-        // Inform the client about the newly created room
-        socket.emit('room_created', { roomId: newRoomId });
-        console.log(`Created new room with ID: ${newRoomId}`);
-        
-        // Update the roomId for this connection
-        roomId = newRoomId;
-      } catch (error) {
-        console.error('Error creating room:', error);
-        socket.emit('room_creation_error', { message: 'Failed to create room' });
-        return;
-      }
-    }
-
-    // Join room
-    socket.join(roomId);
-    
-    // Make sure room data structures exist
-    if (!rooms.has(roomId)) {
+      roomId = await createRoomInDatabase();
       rooms.set(roomId, new Set());
-    }
-    if (!userConnections.has(roomId)) {
+      messageHistory.set(roomId, []);
       userConnections.set(roomId, new Map());
+      socket.emit('room_created', { roomId });
     }
-    
-    // Add user to room
-    const roomUser = { ...user, roomId };
-    rooms.get(roomId)?.add(roomUser);
-    
-    // Track socket connection for this user
-    const roomUsers = userConnections.get(roomId)!;
-    if (!roomUsers.has(user.id)) {
-      roomUsers.set(user.id, new Set());
-      // Only emit user_joined if this is their first connection
-      socket.to(roomId).emit('user_joined', roomUser);
+
+    socket.join(roomId);
+
+    // Initialize room data structures if they don't exist
+    if (!rooms.has(roomId)) rooms.set(roomId, new Set());
+    if (!userConnections.has(roomId)) userConnections.set(roomId, new Map());
+    if (!messageHistory.has(roomId)) messageHistory.set(roomId, []);
+
+    const roomUsers = rooms.get(roomId)!;
+    const roomUserConnections = userConnections.get(roomId)!;
+
+    // Track user connections properly
+    if (!roomUsers.has(user)) {
+      roomUsers.add({ ...user, roomId });
+      socket.to(roomId).emit('user_joined', user);
     }
-    
-    // Add this socket to the user's connections
-    roomUsers.get(user.id)!.add(socket.id);
-    
-    // Store socket data for easier access
-    socket.data.roomId = roomId;
-    
-    // Get unique users for this room
-    const getUniqueRoomUsers = () => {
-      const uniqueUsers: User[] = [];
-      const roomUserMap = userConnections.get(roomId);
-      
-      if (roomUserMap) {
-        for (const [userId, _] of roomUserMap) {
-          const userInfo = Array.from(rooms.get(roomId) || []).find(u => u.id === userId);
-          if (userInfo) {
-            uniqueUsers.push(userInfo);
-          }
-        }
-      }
-      
-      return uniqueUsers;
-    };
 
-    // Send room data to new user (with deduplicated users)
-    const messages = messageHistory.get(roomId) || [];
-    socket.emit('room_data', { 
-      messages, 
-      users: getUniqueRoomUsers()
-    });
+    // Track socket connections per user
+    if (!userConnections.get(roomId)?.has(user.id)) {
+      userConnections.get(roomId)?.set(user.id, new Set());
+    }
+    userConnections.get(roomId)?.get(user.id)?.add(socket.id);
 
-    // Handle messages
-    socket.on('message', (message: ChatMessage) => {
-      const newMessage = {
-        ...message,
-        id: Date.now().toString(),
-        timestamp: new Date(),
-        username: user.username
+    // Fetch recent messages from Redis
+    const redisKey = `chat:room:${roomId}:messages`;
+    const messagesRaw = await pubClient.lRange(redisKey, -MAX_INITIAL_MESSAGES, -1);
+    const messages = messagesRaw.map(msg => JSON.parse(msg));
+
+    socket.emit('room_data', { messages, users: Array.from(roomUsers || []) });
+
+    socket.on('message', async (message: ChatMessage) => {
+      const newMessage = { 
+        ...message, 
+        id: uuidv4(), 
+        timestamp: new Date(), 
+        username: user.username 
       };
 
-      // Store message in history
-      if (!messageHistory.has(roomId)) {
-        messageHistory.set(roomId, []);
-      }
-      messageHistory.get(roomId)?.push(newMessage);
+      // Store message in Redis
+      await pubClient.rPush(redisKey, JSON.stringify(newMessage));
+      await pubClient.lTrim(redisKey, -MAX_STORED_MESSAGES, -1);
 
-      // Broadcast message to room
       io.to(roomId).emit('message', newMessage);
     });
 
-    // Handle disconnection with improved user tracking
     socket.on('disconnect', () => {
-      const roomUserMap = userConnections.get(roomId);
-      
-      if (roomUserMap && roomUserMap.has(user.id)) {
-        const userSockets = roomUserMap.get(user.id)!;
-        userSockets.delete(socket.id);
-        
-        // Only emit user_left and remove user if all their sockets are gone
-        if (userSockets.size === 0) {
-          roomUserMap.delete(user.id);
-          rooms.get(roomId)?.forEach(u => {
-            if (u.id === user.id) {
-              rooms.get(roomId)?.delete(u);
-            }
-          });
-          
-          // Broadcast user left message
-          socket.to(roomId).emit('user_left', user.id);
-        }
+      const userSockets = userConnections.get(roomId)?.get(user.id);
+      userSockets?.delete(socket.id);
+
+      // Remove user only if no active sockets remain
+      if (userSockets && userSockets.size === 0) {
+        userConnections.get(roomId)?.delete(user.id);
+        rooms.get(roomId)?.forEach(u => {
+          if (u.id === user.id) rooms.get(roomId)?.delete(u);
+        });
+        socket.to(roomId).emit('user_left', user.id);
       }
     });
   });
