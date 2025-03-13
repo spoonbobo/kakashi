@@ -13,4 +13,5 @@ CREATE TABLE IF NOT EXISTS users (
 
 INSERT INTO users (username, password) VALUES
 ('spoonbobo', 'bobo1234'),
-('ivanho', 'ivanho1234');
+('ivanho', 'ivanho1234'),
+('agent', 'agent1234');
