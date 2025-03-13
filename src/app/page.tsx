@@ -11,13 +11,17 @@ import { ListRooms } from '../components/ui/chat/list_rooms';
 import { Tasks } from '../components/ui/tasks/task_history';
 import { Approvals } from '../components/ui/approvals/approval_history';
 import TaskLogger from '../components/ui/panel/task_logger';
-import "./globals.css"
 import ChatRoom from '../components/ui/chat/chat_room';
+import { KnowledgeBase } from '../components/ui/kb/knowledge_base';
+import "./globals.css"
+import Image from 'next/image';
+import logo from '/src/images/logo.png'; // Ensure the path is correct
+
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
   const [time, setTime] = useState<string>('');
-  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'approvals' | 'conversations' | 'help' | 'feedback'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'approvals' | 'conversations' | 'help' | 'feedback' | 'knowledge_base'>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
 
@@ -100,6 +104,10 @@ export default function Home() {
     setActiveView('feedback');
   };
 
+  const handleKnowledgeBaseClick = () => {
+    setActiveView('knowledge_base');
+  };
+
   useEffect(() => {
     async function fetchGreeting() {
       try {
@@ -136,6 +144,7 @@ export default function Home() {
         onApprovalsClick={handleApprovalsClick}
         onHelpClick={handleHelpClick}
         onFeedbackClick={handleFeedbackClick}
+        onKnowledgeBaseClick={handleKnowledgeBaseClick}
       />
       
       <Box 
@@ -159,6 +168,7 @@ export default function Home() {
               activeView === 'conversations' ? <ListRooms /> :
               activeView === 'tasks' ? <Tasks /> :
               activeView === 'approvals' ? <Approvals /> :
+              activeView === 'knowledge_base' ? <KnowledgeBase /> :
               <ListRooms/>
             }
             rightComponent={
@@ -169,16 +179,21 @@ export default function Home() {
             initialLeftWidth="75%"
         />
       </Box>
-  
-      <Text
-        position="absolute"
-        bottom="10px"
-        right="10px"
-        fontSize="sm"
-        color="gray.500"
-      >
-        Version 0.0.1
-      </Text>
+      <Box position="absolute" bottom="30px" right="10px" display="flex" alignItems="center">
+        <Box width="100px" height="auto" overflow="hidden" mr="2">
+          <Image
+            src={logo}
+            alt="Logo"
+            layout="responsive"
+            width={50} // Adjust width as needed
+            height={50} // Adjust height as needed
+            className="shiny-logo"
+          />
+        </Box>
+        <Text fontSize="sm" color="gray.500">
+          Version 0.0.1
+        </Text>
+      </Box>
     </Box>
   );
 }

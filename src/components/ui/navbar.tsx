@@ -1,8 +1,17 @@
 import { Box, HStack, Text, Icon, Flex, IconButton} from '@chakra-ui/react';
 import { Tooltip } from "@/components/ui/tooltip"
-import { FaCog, FaCheck , FaTasks, FaPlus, FaQuestionCircle, FaUsers } from 'react-icons/fa';
+import { 
+    FaCog, 
+    FaCheck , 
+    FaTasks, 
+    FaPlus, 
+    FaQuestionCircle, 
+    FaUsers, 
+    FaBook,
+    FaBookOpen
+} from 'react-icons/fa';
 import { AuthPopover } from './popover/auth_popover';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 
 interface NavbarProps {
     onConversationsClick: () => void;
@@ -11,6 +20,7 @@ interface NavbarProps {
     onApprovalsClick: () => void;
     onHelpClick: () => void;
     onFeedbackClick: () => void;
+    onKnowledgeBaseClick: () => void;
 }
 
 export const Navbar = memo(function Navbar( { 
@@ -19,12 +29,20 @@ export const Navbar = memo(function Navbar( {
     onTasksClick, 
     onApprovalsClick,
     onHelpClick,
-    onFeedbackClick
+    onFeedbackClick,
+    onKnowledgeBaseClick
 }: NavbarProps ) {
+
+    const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
 
     const handleNewChatClick = () => {
         window.dispatchEvent(new Event('newChat'));
         onNewChatClick();
+    };
+
+    const handleKnowledgeBaseClick = () => {
+        setIsKnowledgeBaseOpen(!isKnowledgeBaseOpen);
+        onKnowledgeBaseClick();
     };
 
     console.log('User (from Navbar):', "hi");
@@ -100,6 +118,18 @@ export const Navbar = memo(function Navbar( {
                        onClick={onApprovalsClick}
                     >
                         <Icon as={FaCheck} />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip content="Knowledge Base">
+                    <IconButton
+                       bg="transparent"
+                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                       aria-label="Knowledge Base"
+                       onClick={handleKnowledgeBaseClick}
+                    >
+                        <Icon as={isKnowledgeBaseOpen ? FaBookOpen : FaBook} />
                     </IconButton>
                 </Tooltip>
 
