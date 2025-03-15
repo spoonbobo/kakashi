@@ -25,6 +25,29 @@ services:
     networks:
       - app-network
 
+  kakashi-qdrant:
+    image: qdrant/qdrant
+    container_name: kakashi-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - app-network
+
+  kakashi-pgadmin:
+    image: dpage/pgadmin4
+    container_name: kakashi-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - kakashi-psqldb
+    networks:
+      - app-network
+
   kakashi-chat_server:
     build:
       context: .
@@ -82,29 +105,7 @@ services:
       - kakashi-chat_server
     networks:
       - app-network
-
-  kakashi-qdrant:
-    image: qdrant/qdrant
-    container_name: kakashi-qdrant
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    networks:
-      - app-network
-
-  kakashi-pgadmin:
-    image: dpage/pgadmin4
-    container_name: kakashi-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    depends_on:
-      - kakashi-psqldb
-    networks:
-      - app-network
+  # kakashi-mcp
 
 volumes:
   redis_data:

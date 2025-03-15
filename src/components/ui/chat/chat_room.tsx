@@ -150,7 +150,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleRetryConnection = useCallback(() => setRetryCount(prev => prev + 1), []);
+  // const handleRetryConnection = useCallback(() => setRetryCount(prev => prev + 1), []);
   const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setMessage(e.target.value), []);
   const sendMessage = useCallback(() => {
     if (socketRef.current && message.trim()) {
