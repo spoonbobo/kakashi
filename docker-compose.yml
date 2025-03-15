@@ -52,8 +52,6 @@ services:
       dockerfile: docker/Dockerfile.next
     container_name: kakashi-app
     environment:
-      - NEXT_PUBLIC_SOCKET_URL=http://kakashi-chat_server:3001
-      - NODE_ENV=development
       - PGUSER=${PGUSER:-postgres}
       - PGPASSWORD=${PGPASSWORD:-postgres}
       - PGHOST=${PGHOST:-kakashi-psqldb}
@@ -61,12 +59,8 @@ services:
       - PGPORT=${PGPORT:-5432}
       - JWT_SECRET=${JWT_SECRET:-dev_secret}
       - NEXT_PUBLIC_JWT_SECRET=${NEXT_PUBLIC_JWT_SECRET:-dev_secret}
+      - NEXT_PUBLIC_SOCKET_URL=http://kakashi-chat_server:3001
       - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-http://kakashi-chat_server:3001}
-      - REDIS_URL=${REDIS_URL:-redis://kakashi-redis:6379}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-postgres}
-      - CHAT_SERVER_PORT=${CHAT_SERVER_PORT:-3001}
 
     volumes:
       - .:/app
