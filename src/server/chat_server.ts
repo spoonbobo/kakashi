@@ -23,7 +23,7 @@ interface ChatMessage {
 export const setupChatServer = (httpServer: HttpServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://kakashi-next_app:3000',
+      origin: process.env.CLIENT_URL,
       methods: ['GET', 'POST']
     }
   });
@@ -151,7 +151,7 @@ setupChatServer(httpServer);
 // Add this helper function
 const createRoomInDatabase = async (): Promise<string> => {
   try {
-    const response = await fetch('http://kakashi-next_app:3000/api/chat/create_room', {
+    const response = await fetch(`http://${process.env.CLIENT_URL}/api/chat/create_room`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
