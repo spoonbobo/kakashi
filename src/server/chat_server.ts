@@ -85,8 +85,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
     if (!messageHistory.has(roomId)) messageHistory.set(roomId, []);
 
     const roomUsers = rooms.get(roomId)!;
-    const roomUserConnections = userConnections.get(roomId)!;
-
+  
     // Track user connections properly
     if (!roomUsers.has(user)) {
       roomUsers.add({ ...user, roomId });
@@ -150,8 +149,9 @@ setupChatServer(httpServer);
 
 // Add this helper function
 const createRoomInDatabase = async (): Promise<string> => {
+  console.log(process.env.CLIENT_URL);
   try {
-    const response = await fetch(`http://${process.env.CLIENT_URL}/api/chat/create_room`, {
+    const response = await fetch(`${process.env.CLIENT_URL}/api/chat/create_room`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

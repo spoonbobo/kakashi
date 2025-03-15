@@ -89,7 +89,7 @@ services:
     networks:
       - app-network
 
-  qdrant:
+  kakashi-qdrant:
     image: qdrant/qdrant
     container_name: kakashi-qdrant
     ports:
@@ -99,7 +99,7 @@ services:
     networks:
       - app-network
 
-  pgadmin:
+  kakashi-pgadmin:
     image: dpage/pgadmin4
     container_name: kakashi-pgadmin
     environment:
