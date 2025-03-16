@@ -45,7 +45,6 @@ services:
     environment:
       - REDIS_URL=redis://kakashi-redis:6379
       - JWT_SECRET=${JWT_SECRET:-dev_secret}
-      - CHAT_SERVER_PORT=${CHAT_SERVER_PORT:-3001}
       - CLIENT_URL=${CLIENT_URL:-http://kakashi-app:3000}
       - NODE_ENV=development
     volumes:
@@ -80,7 +79,12 @@ services:
     networks:
       - app-network
 
-  # kakashi-mcp_server
+  kakashi-mcp_server:
+    extends:
+      file: docker/docker-compose.yml.mcp
+      service: kakashi-mcp_server
+    networks:
+      - app-network
 
   kakashi-nginx:
     image: nginx:latest
