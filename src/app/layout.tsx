@@ -1,6 +1,6 @@
 
 
-import { Provider } from "@/components/ui/provider"
+import { Provider } from "@/components/provider"
 import { AuthProvider } from "@/auth/context"
 
 export default function RootLayout(props: { children: React.ReactNode }) {

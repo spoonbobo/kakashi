@@ -1,12 +1,12 @@
-import { Box, HStack, Text, Icon, Flex, IconButton} from '@chakra-ui/react';
-import { Tooltip } from "@/components/ui/tooltip"
-import { 
-    FaCog, 
-    FaCheck , 
-    FaTasks, 
-    FaPlus, 
-    FaQuestionCircle, 
-    FaUsers, 
+import { Box, HStack, Text, Icon, Flex, IconButton } from '@chakra-ui/react';
+import { Tooltip } from "@/components/tooltip"
+import {
+    FaCog,
+    FaCheck,
+    FaTasks,
+    FaPlus,
+    FaQuestionCircle,
+    FaUsers,
     FaBook,
     FaBookOpen
 } from 'react-icons/fa';
@@ -23,15 +23,15 @@ interface NavbarProps {
     onKnowledgeBaseClick: () => void;
 }
 
-export const Navbar = memo(function Navbar( { 
-    onConversationsClick, 
-    onNewChatClick, 
-    onTasksClick, 
+export const Navbar = memo(function Navbar({
+    onConversationsClick,
+    onNewChatClick,
+    onTasksClick,
     onApprovalsClick,
     // onHelpClick,
     // onFeedbackClick,
     onKnowledgeBaseClick
-}: NavbarProps ) {
+}: NavbarProps) {
 
     const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
 
@@ -73,61 +73,61 @@ export const Navbar = memo(function Navbar( {
             <HStack>
                 <Tooltip content="New Chat">
                     <IconButton
-                       bg="transparent"
-                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                       aria-label="New Chat"
-                       onClick={handleNewChatClick}
+                        bg="transparent"
+                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                        aria-label="New Chat"
+                        onClick={handleNewChatClick}
                     >
                         <Icon as={FaPlus} />
                     </IconButton>
                 </Tooltip>
-                
+
                 <Tooltip content="Rooms">
                     <IconButton
-                       bg="transparent"
-                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                       aria-label="Rooms"
-                       onClick={onConversationsClick}
+                        bg="transparent"
+                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                        aria-label="Rooms"
+                        onClick={onConversationsClick}
                     >
                         <Icon as={FaUsers} />
                     </IconButton>
                 </Tooltip>
                 <Tooltip content="Tasks">
                     <IconButton
-                       bg="transparent"
-                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                       aria-label="Tasks"
-                       onClick={onTasksClick}
+                        bg="transparent"
+                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                        aria-label="Tasks"
+                        onClick={onTasksClick}
                     >
                         <Icon as={FaTasks} />
                     </IconButton>
                 </Tooltip>
                 <Tooltip content="Approvals">
                     <IconButton
-                       bg="transparent"
-                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                       aria-label="Completed"
-                       onClick={onApprovalsClick}
+                        bg="transparent"
+                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                        aria-label="Completed"
+                        onClick={onApprovalsClick}
                     >
                         <Icon as={FaCheck} />
                     </IconButton>
                 </Tooltip>
                 <Tooltip content="Knowledge Base">
                     <IconButton
-                       bg="transparent"
-                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                       aria-label="Knowledge Base"
-                       onClick={handleKnowledgeBaseClick}
+                        bg="transparent"
+                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                        aria-label="Knowledge Base"
+                        onClick={handleKnowledgeBaseClick}
                     >
                         <Icon as={isKnowledgeBaseOpen ? FaBookOpen : FaBook} />
                     </IconButton>
@@ -138,12 +138,12 @@ export const Navbar = memo(function Navbar( {
             <Flex align="center">
                 <Tooltip content="Help">
                     <IconButton
-                       bg="transparent"
-                       _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                       _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                       _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                       aria-label="Help"
-                       onClick={onApprovalsClick}
+                        bg="transparent"
+                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                        aria-label="Help"
+                        onClick={onApprovalsClick}
                     >
                         <Icon as={FaQuestionCircle} />
                     </IconButton>

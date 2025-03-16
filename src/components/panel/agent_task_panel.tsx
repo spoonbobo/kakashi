@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, VStack, Text } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/auth/context';
-import { TaskBox } from '@/components/ui/box/task_box';
+import { TaskBox } from '@/components/box/task_box';
 
 interface AgentTaskPanelProps {
   title?: string;

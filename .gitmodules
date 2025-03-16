@@ -1,0 +1,3 @@
+[submodule "mcp/mcp/servers"]
+	path = mcp/mcp/servers
+	url = https://github.com/modelcontextprotocol/servers

@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { Text, Box } from '@chakra-ui/react';
-import { Navbar } from '../components/ui/navbar';
-import WelcomeBox from '../components/ui/box/welcome_box';
-import AgentTaskPanel from '../components/ui/panel/agent_task_panel';
-import { ResizableLayoutV } from '@/components/ui/stretch/resizeable_layoutV';
-import { ResizableLayoutH } from '@/components/ui/stretch/resizeable_layoutH';
-import { ListRooms } from '../components/ui/chat/list_rooms';
-import { Tasks } from '../components/ui/tasks/task_history';
-import { Approvals } from '../components/ui/approvals/approval_history';
-import TaskLogger from '../components/ui/panel/task_logger';
-import ChatRoom from '../components/ui/chat/chat_room';
-import { KnowledgeBase } from '../components/ui/kb/knowledge_base';
+import { Navbar } from '../components/navbar';
+import WelcomeBox from '../components/box/welcome_box';
+import AgentTaskPanel from '../components/panel/agent_task_panel';
+import { ResizableLayoutV } from '@/components/stretch/resizeable_layoutV';
+import { ResizableLayoutH } from '@/components/stretch/resizeable_layoutH';
+import { ListRooms } from '../components/chat/list_rooms';
+import { Tasks } from '../components/tasks/task_history';
+import { Approvals } from '../components/approvals/approval_history';
+import TaskLogger from '../components/panel/task_logger';
+import ChatRoom from '../components/chat/chat_room';
+import { KnowledgeBase } from '../components/kb/knowledge_base';
 import "./globals.css"
 import Image from 'next/image';
 import logo from '/src/images/logo.png'; // Ensure the path is correct

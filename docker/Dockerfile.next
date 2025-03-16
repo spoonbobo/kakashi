@@ -1,23 +1,17 @@
-# Use official Node.js image
-FROM node:23.7-alpine
-
-# Set working directory
+# Build stage
+FROM node:23.7-alpine AS builder
 WORKDIR /app
-
-# Copy package.json and package-lock.json
 COPY package*.json ./
-
-# Install dependencies
-RUN npm install 
-
-# Copy the rest of the application code
+RUN npm install
 COPY . .
-
-# Build the Next.js app
 RUN npm run build
 
-# Expose the port the app runs on
+# Runtime stage
+FROM node:23.7-alpine
+WORKDIR /app
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 EXPOSE 3000
-
-# Start the application
-CMD ["npm", "run", "dev"]
+CMD ["npm", "start"]
