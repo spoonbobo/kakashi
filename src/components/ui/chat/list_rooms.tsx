@@ -51,16 +51,16 @@ export const ListRooms = () => {
     try {
       const res = await fetch(`/api/chat/get_rooms?page=${currentPage}&limit=${ITEMS_PER_PAGE}`);
       if (!res.ok) throw new Error("Failed to fetch rooms");
-      
+
       const data = await res.json();
-      
+
       // Check if the data has the expected structure
       if (!data || !Array.isArray(data.rooms)) {
         console.error("Unexpected data format:", data);
         setError("Failed to load rooms: unexpected data format");
         return;
       }
-      
+
       setRooms(prev => currentPage === 1 ? data.rooms : [...prev, ...data.rooms]);
       setHasMore(data.rooms.length === ITEMS_PER_PAGE);
     } catch (err) {
@@ -110,7 +110,7 @@ export const ListRooms = () => {
             {error}
           </Text>
         )}
-        
+
         {Array.isArray(rooms) && rooms.map((room, index) => {
           const messageArray = Array.isArray(room.messages) ? room.messages : [];
           const lastMessage = messageArray[0]?.value || "Start a conversation...";

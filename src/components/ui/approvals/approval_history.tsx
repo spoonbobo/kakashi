@@ -26,7 +26,7 @@ export const Approvals = () => {
       initial={{ opacity: 0, x: -50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
-      transition={{ 
+      transition={{
         duration: 0.7,
         x: { type: "spring", stiffness: 300, damping: 30 }
       }}

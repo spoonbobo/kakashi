@@ -12,8 +12,8 @@ interface AgentTaskPanelProps {
 
 const MotionBox = motion.create(Box);
 
-const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({ 
-  title = "Agent Dialog", 
+const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
+  title = "Agent Dialog",
   onTaskSelect
 }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,7 +34,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
   useEffect(() => {
     fetchRecentTasks();
   }, []);
-  
+
   return (
     <MotionBox
       width="100%"
@@ -47,7 +47,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 50 }}
-      transition={{ 
+      transition={{
         duration: 0.7,
         x: { type: "spring", stiffness: 300, damping: 30 }
       }}
@@ -55,7 +55,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
       <Text fontSize="xl" fontWeight="bold" mb={4} textAlign="left">
         {title}
       </Text>
-      
+
       <VStack align="stretch" height="calc(100% - 70px)">
         {tasks.map((item) => (
           <TaskBox key={item.id} item={item} onClick={() => onTaskSelect(item)} />

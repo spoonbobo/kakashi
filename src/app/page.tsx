@@ -116,7 +116,7 @@ export default function Home() {
         const response = await fetch('/api/greeting');
         const data = await response.json();
         setGreeting(data.greeting);
-        
+
         // Format the time as H:M:S DD-MM-YY
         const date = new Date(data.time);
         const formattedTime = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()} ${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
@@ -139,7 +139,7 @@ export default function Home() {
       position="relative"
       minH="100vh"
     >
-      <Navbar 
+      <Navbar
         onConversationsClick={handleConversationsClick}
         onNewChatClick={handleNewChatClick}
         onTasksClick={handleTasksClick}
@@ -148,8 +148,8 @@ export default function Home() {
         onFeedbackClick={handleFeedbackClick}
         onKnowledgeBaseClick={handleKnowledgeBaseClick}
       />
-      
-      <Box 
+
+      <Box
         position="absolute"
         top="50%"
         left="50%"
@@ -158,27 +158,27 @@ export default function Home() {
       >
         <WelcomeBox greeting={greeting} />
       </Box>
-  
-      <Box 
+
+      <Box
         pt="80px"
         height="100vh"
         overflow="hidden"
       >
-       <ResizableLayoutV
-            leftComponent={
-              activeView === 'chat' ? <ChatRoom roomId={sessionId || ''} /> :
+        <ResizableLayoutV
+          leftComponent={
+            activeView === 'chat' ? <ChatRoom roomId={sessionId || ''} /> :
               activeView === 'conversations' ? <ListRooms /> :
-              activeView === 'tasks' ? <Tasks /> :
-              activeView === 'approvals' ? <Approvals /> :
-              activeView === 'knowledge_base' ? <KnowledgeBase /> :
-              <ListRooms/>
-            }
-            rightComponent={
+                activeView === 'tasks' ? <Tasks /> :
+                  activeView === 'approvals' ? <Approvals /> :
+                    activeView === 'knowledge_base' ? <KnowledgeBase /> :
+                      <ListRooms />
+          }
+          rightComponent={
             <ResizableLayoutH
               topComponent={<AgentTaskPanel title="Task" onTaskSelect={setSelectedTask} />}
               bottomComponent={<TaskLogger title="Task Log" task={selectedTask} />}
-              />}
-            initialLeftWidth="75%"
+            />}
+          initialLeftWidth="75%"
         />
       </Box>
       <Box position="absolute" bottom="30px" right="10px" display="flex" alignItems="center">
@@ -193,7 +193,7 @@ export default function Home() {
           />
         </Box>
         <Text fontSize="sm" color="gray.500">
-          Version 0.0.1
+          Version 0.0.2
         </Text>
       </Box>
     </Box>

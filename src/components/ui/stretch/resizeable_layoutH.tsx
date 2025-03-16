@@ -77,7 +77,7 @@ export const ResizableLayoutH: React.FC<ResizableLayoutProps> = ({
   }
 
   return (
-    <Flex 
+    <Flex
       ref={containerRef}
       width="100%"
       height="100%"

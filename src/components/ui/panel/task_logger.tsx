@@ -19,9 +19,9 @@ interface TaskLoggerProps {
 
 const MotionBox = motion.create(Box);
 
-const TaskLogger: React.FC<TaskLoggerProps> = ({ 
-  title = "Task Logger", 
-  task 
+const TaskLogger: React.FC<TaskLoggerProps> = ({
+  title = "Task Logger",
+  task
 }) => {
   const { isAuthenticated } = useAuth();
 
@@ -41,7 +41,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 50 }}
-      transition={{ 
+      transition={{
         duration: 0.7,
         x: { type: "spring", stiffness: 300, damping: 30 }
       }}
@@ -49,7 +49,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
       <Text fontSize="xl" fontWeight="bold" mb={4} textAlign="left">
         {title}
       </Text>
-      
+
       {task ? (
         <VStack align="stretch">
           <Text><strong>Executor:</strong> {task.task_executor}</Text>

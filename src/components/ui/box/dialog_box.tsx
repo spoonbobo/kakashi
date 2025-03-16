@@ -9,13 +9,13 @@ interface DialogBoxProps {
 
 export const DialogBox = ({ item }: DialogBoxProps) => {
     return (
-        <Box 
+        <Box
             key={item.id}
             p={3}
             bg="gray.50"
             borderRadius="md"
             _hover={{ bg: "gray.100" }}
-    transition="background 0.2s"
+            transition="background 0.2s"
             height={`calc((100%) / 15)`}
             display="flex"
             alignItems="center"

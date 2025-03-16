@@ -41,7 +41,7 @@ export const TaskBox = ({ item, onClick }: TaskBoxProps) => {
     }, [item.task_status]);
 
     return (
-        <MotionBox 
+        <MotionBox
             key={item.id}
             p={3}
             borderRadius="md"
@@ -82,7 +82,7 @@ export const TaskBox = ({ item, onClick }: TaskBoxProps) => {
                 <Badge colorScheme={statusColor}>{item.task_status}</Badge>
             </Flex>
             <Text fontSize="sm">{item.task_description}</Text>
-            <Box 
+            <Box
                 mt={2}
                 h="2px"
                 bg="blue.200"
