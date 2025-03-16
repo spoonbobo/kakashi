@@ -1,7 +1,6 @@
 import { Box, Text, VStack } from "@chakra-ui/react";
 import { useAuth } from "@/auth/context";
 import { motion } from "framer-motion";
-import { FaBook } from 'react-icons/fa';
 const MotionBox = motion.create(Box);
 
 export const KnowledgeBase = () => {

@@ -13,7 +13,9 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
 
 // Custom components to avoid spacing issues
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const VStack = (props: any) => <Flex direction="column" {...props} />;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const HStack = (props: any) => <Flex direction="row" {...props} />;
 
 const MotionBox = motion.create(Box);

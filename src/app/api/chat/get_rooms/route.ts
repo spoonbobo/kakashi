@@ -40,7 +40,7 @@ export async function GET(request: Request) {
         const rooms = result.rows.map(row => ({
             id: row.id,
             created_at: row.created_at,
-            messages: row.messages.filter((m: any) => m.id !== null),
+            messages: row.messages.filter((m: { id: string }) => m.id !== null),
             message_count: row.message_count
         }));
 

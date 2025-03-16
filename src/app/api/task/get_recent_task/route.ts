@@ -19,7 +19,7 @@ id |        name        |   role   |     start_time      |      end_time       |
 
 */
 
-export async function GET(request: Request) {
+export async function GET() {
     try {
         const result = await pool.query(`
             select 

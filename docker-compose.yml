@@ -79,12 +79,12 @@ services:
     networks:
       - app-network
 
-  kakashi-mcp_server:
-    extends:
-      file: docker/docker-compose.yml.mcp
-      service: kakashi-mcp_server
-    networks:
-      - app-network
+  # kakashi-mcp_server:
+  #   extends:
+  #     file: docker/docker-compose.yml.mcp
+  #     service: kakashi-mcp_server
+  #   networks:
+  #     - app-network
 
   kakashi-nginx:
     image: nginx:latest

@@ -28,8 +28,8 @@ export const Navbar = memo(function Navbar( {
     onNewChatClick, 
     onTasksClick, 
     onApprovalsClick,
-    onHelpClick,
-    onFeedbackClick,
+    // onHelpClick,
+    // onFeedbackClick,
     onKnowledgeBaseClick
 }: NavbarProps ) {
 

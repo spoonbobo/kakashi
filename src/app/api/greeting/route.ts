@@ -16,6 +16,7 @@ export async function GET() {
     client.release();
     return NextResponse.json({ time: res.rows[0].current_time });
   } catch (error) {
+    console.error('Error connecting to database:', error);
     return NextResponse.json(
       { error: 'Database connection failed' },
       { status: 500 }

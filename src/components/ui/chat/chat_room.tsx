@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import { Box, Text, Input, Flex, VStack, IconButton, Spinner, Center, Button } from "@chakra-ui/react";
+import { Box, Text, Input, Flex, VStack, IconButton, Spinner, Center } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaPaperPlane, FaSync } from "react-icons/fa";
+import { FaPaperPlane } from "react-icons/fa";
 import { useAuth } from "@/auth/context";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -41,8 +41,9 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [roomName, setRoomName] = useState<string>("Chat Room");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [retryCount, setRetryCount] = useState(0);
-  
+
   const roomIdRef = useRef<string | undefined>(roomId);
   const socketRef = useRef<Socket | null>(null);
 
@@ -84,7 +85,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     }
 
     setLoading(true);
-    
+
     const socket = io(window.location.hostname, {
       path: '/socket.io/',
       auth: {
@@ -96,7 +97,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
       timeout: 10000,
       transports: ['websocket', 'polling'],
     });
-    
+
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -189,7 +190,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
             {messages.map((msg) => {
               const isCurrentUser = msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString();
               const isSystem = msg.sender === 'system';
-              
+
               return (
                 <MotionFlex
                   key={msg.id}

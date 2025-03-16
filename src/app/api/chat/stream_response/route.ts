@@ -1,9 +1,4 @@
-import { NextResponse } from 'next/server';
-
-export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const sessionId = searchParams.get('sessionId');
-  
+export async function GET() {
     // Set up Server-Sent Events headers
     const headers = new Headers({
       'Content-Type': 'text/event-stream',

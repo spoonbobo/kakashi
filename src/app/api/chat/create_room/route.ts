@@ -11,7 +11,7 @@ const pool = new Pool({
 });
   
 
-export async function POST(request: Request) {
+export async function POST() {
     try {
       const result = await pool.query('INSERT INTO chat_rooms DEFAULT VALUES RETURNING id');
       const sessionId = result.rows[0].id;

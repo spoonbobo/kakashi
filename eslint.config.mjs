@@ -14,17 +14,12 @@ export default [
   {
     rules: {
       "react/react-in-jsx-scope": "off",
-      "@typescript-eslint/no-unused-vars": "off",
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-empty-function": "off",
-      "@typescript-eslint/no-empty-object-type": "off",
-      "@typescript-eslint/no-non-null-assertion": "off",
-      "@typescript-eslint/no-non-null-asserted-optional-chain": "off",
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-      "@typescript-eslint/no-unsafe-member-access": "off",
-      "@typescript-eslint/no-unsafe-function-type": "off",
+      "react/prop-types": "off",
+      "react/jsx-uses-react": "error",
+      "react/jsx-uses-vars": "error",
+      "no-unused-vars": "warn",
+      "no-console": "warn",
+      "@typescript-eslint/no-empty-object-type": "off"
     }
-    
   }
 ];

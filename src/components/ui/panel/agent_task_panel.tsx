@@ -6,6 +6,7 @@ import { TaskBox } from '@/components/ui/box/task_box';
 
 interface AgentTaskPanelProps {
   title?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onTaskSelect: (task: any) => void;
 }
 
@@ -15,6 +16,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
   title = "Agent Dialog", 
   onTaskSelect
 }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tasks, setTasks] = useState<any[]>([]);
   const { isAuthenticated } = useAuth();
 

@@ -20,9 +20,11 @@ import logo from '/src/images/logo.png'; // Ensure the path is correct
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [time, setTime] = useState<string>('');
   const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'approvals' | 'conversations' | 'help' | 'feedback' | 'knowledge_base'>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedTask, setSelectedTask] = useState<any>(null);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function Home() {
         setActiveView('conversations');
         setSessionId(null);
       } else if (view) {
-        setActiveView(view as any);
+        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'approvals' | 'knowledge_base');
         setSessionId(null);
       }
     };

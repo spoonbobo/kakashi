@@ -58,6 +58,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
       };
       next();
     } catch (err) {
+      console.error('Authentication error:', err);
       next(new Error('Authentication error'));
     }
   });
