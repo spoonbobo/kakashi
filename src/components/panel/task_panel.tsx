@@ -1,218 +1,248 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Box, VStack, Text } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/auth/context';
 import { TaskBox } from '@/components/box/task_box';
-import { io, Socket } from "socket.io-client";
+
+interface Task {
+  id: string;
+  task_executor: string;
+  task_description: string;
+  task_create_time: Date;
+  task_status: string;
+  task_result: string | null;
+}
 
 interface AgentTaskPanelProps {
   title?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onTaskSelect: (task: any) => void;
+  onTaskSelect: (task: Task) => void;
 }
 
 const MotionBox = motion.create(Box);
+
+// Constants moved outside component to prevent recreation
+const MAX_TASKS = 20;
+const ACTIVE_POLL_INTERVAL = 2000;
+const INACTIVE_POLL_INTERVAL = 10000;
+const ACTIVITY_TIMEOUT = 60000;
+const ANIMATION_DURATION = 3000;
 
 const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
   title = "Agent Dialog",
   onTaskSelect
 }) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [tasks, setTasks] = useState<any[]>([]);
-  // Track newly added tasks for animation
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set());
+  const [lastTaskId, setLastTaskId] = useState<string | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+
   const { isAuthenticated, user } = useAuth();
-  const socketRef = useRef<Socket | null>(null);
-  const tasksRef = useRef<any[]>([]);  // Reference to track tasks between renders
-  const pendingTasksRef = useRef<Set<string>>(new Set());  // Track tasks waiting to be added
 
-  // Maximum number of tasks to display
-  const MAX_TASKS = 20;
-
-  // Poll interval for fallback task fetching (in ms)
-  const POLL_INTERVAL = 10000;
+  // Refs for tracking state between renders
+  const tasksRef = useRef<Task[]>([]);
   const lastFetchRef = useRef<number>(0);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastActivityRef = useRef<number>(Date.now());
+  const currentPollIntervalRef = useRef<number>(ACTIVE_POLL_INTERVAL);
+  const isMountedRef = useRef(true);
 
   // Keep tasksRef in sync with tasks state
   useEffect(() => {
     tasksRef.current = tasks;
   }, [tasks]);
 
-  // Function to process a new task with retry logic
-  const processNewTask = (taskData: any, maxRetries = 3) => {
-    console.log('Processing new task:', taskData.id);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (pollingTimerRef.current) {
+        clearTimeout(pollingTimerRef.current);
+      }
+    };
+  }, []);
 
-    // Add to pending set to track
-    pendingTasksRef.current.add(taskData.id);
+  // Memoized function to process a new task
+  const processNewTask = useCallback((taskData: Task) => {
+    if (!isMountedRef.current) return;
 
-    const attemptUpdate = (retryCount = 0) => {
-      // If task is already in our list, don't add again
-      if (tasksRef.current.some(task => task.id === taskData.id)) {
-        console.log('Task already in state, skipping update');
-        pendingTasksRef.current.delete(taskData.id);
+    // If task is already in our list, don't add again
+    if (tasksRef.current.some(task => task.id === taskData.id)) {
+      return;
+    }
+
+    // Update the state
+    setTasks(prevTasks => {
+      const newTasks = [taskData, ...prevTasks].slice(0, MAX_TASKS);
+      return newTasks;
+    });
+
+    // Mark this task as new for animation
+    setNewTaskIds(prev => {
+      const updated = new Set(prev);
+      updated.add(taskData.id);
+      return updated;
+    });
+
+    // Clear animation flag after delay
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        setNewTaskIds(current => {
+          const next = new Set(current);
+          next.delete(taskData.id);
+          return next;
+        });
+      }
+    }, ANIMATION_DURATION);
+  }, []);
+
+  // Track user activity
+  useEffect(() => {
+    const updateActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    // Listen for user activity events
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, updateActivity));
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, updateActivity));
+    };
+  }, []);
+
+  // Fetch tasks function with debouncing
+  const fetchRecentTasks = useCallback(async () => {
+    if (isPolling || !isMountedRef.current) return;
+
+    try {
+      setIsPolling(true);
+
+      // Use the last task ID to only fetch newer tasks
+      const url = lastTaskId
+        ? `/api/task/get_recent_task?after=${lastTaskId}`
+        : `/api/task/get_recent_task`;
+
+      const res = await fetch(url, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      if (!isMountedRef.current) return;
+
+      if (res.status === 304) {
+        // No new content
+        lastFetchRef.current = Date.now();
         return;
       }
 
-      console.log(`Attempting to add task (try ${retryCount + 1}/${maxRetries + 1})`);
+      if (!res.ok) throw new Error("Failed to fetch recent tasks");
 
-      // Update the state
-      setTasks(prevTasks => {
-        const newTasks = [taskData, ...prevTasks].slice(0, MAX_TASKS);
+      const data = await res.json();
+      const newTasks = Array.isArray(data.tasks) ? data.tasks : Array.isArray(data) ? data : [];
 
-        // Schedule verification
-        setTimeout(() => {
-          // Verify the task was actually added to state
-          if (!tasksRef.current.some(task => task.id === taskData.id)) {
-            if (retryCount < maxRetries) {
-              console.log(`Task ${taskData.id} not found in state, retrying...`);
-              attemptUpdate(retryCount + 1);
-            } else {
-              console.error(`Failed to add task ${taskData.id} after ${maxRetries + 1} attempts`);
-              // As a last resort, trigger a fresh fetch
-              fetchRecentTasks();
-              pendingTasksRef.current.delete(taskData.id);
+      if (!isMountedRef.current) return;
+
+      if (newTasks.length > 0) {
+        // Update last task ID for future fetches
+        setLastTaskId(newTasks[0].id);
+
+        // Merge new tasks with existing ones, removing duplicates
+        setTasks(prevTasks => {
+          const taskMap = new Map();
+
+          // Add new tasks first (so they take precedence)
+          newTasks.forEach(task => {
+            if (!taskMap.has(task.id)) {
+              taskMap.set(task.id, task);
             }
-          } else {
-            console.log(`Task ${taskData.id} successfully added to state`);
-            pendingTasksRef.current.delete(taskData.id);
-          }
-        }, 100); // Short delay to allow for state update
-
-        return newTasks;
-      });
-
-      // Mark this task as new for animation
-      setNewTaskIds(prev => {
-        const updated = new Set(prev);
-        updated.add(taskData.id);
-        // Clear this new flag after 3 seconds
-        setTimeout(() => {
-          setNewTaskIds(current => {
-            const next = new Set(current);
-            next.delete(taskData.id);
-            return next;
           });
-        }, 3000);
-        return updated;
-      });
-    };
 
-    // Start the first attempt
-    attemptUpdate();
-  };
+          // Then add existing tasks
+          prevTasks.forEach(task => {
+            if (!taskMap.has(task.id)) {
+              taskMap.set(task.id, task);
+            }
+          });
 
+          // Convert back to array and limit to MAX_TASKS
+          return Array.from(taskMap.values()).slice(0, MAX_TASKS);
+        });
+
+        // Mark new tasks for animation
+        newTasks.forEach(task => {
+          if (isMountedRef.current) {
+            setNewTaskIds(prev => {
+              const updated = new Set(prev);
+              updated.add(task.id);
+              return updated;
+            });
+
+            // Clear animation flag after delay
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                setNewTaskIds(current => {
+                  const next = new Set(current);
+                  next.delete(task.id);
+                  return next;
+                });
+              }
+            }, ANIMATION_DURATION);
+          }
+        });
+      }
+
+      lastFetchRef.current = Date.now();
+    } catch (error) {
+      console.error('Error fetching recent tasks:', error);
+    } finally {
+      if (isMountedRef.current) {
+        setIsPolling(false);
+      }
+    }
+  }, [isPolling, lastTaskId]);
+
+  // Efficient polling with dynamic interval based on user activity
   useEffect(() => {
     if (!isAuthenticated || !user?.token) return;
 
     // Initial fetch of recent tasks
     fetchRecentTasks();
     lastFetchRef.current = Date.now();
+    lastActivityRef.current = Date.now();
 
-    // Setup polling as a fallback
-    pollingTimerRef.current = setInterval(() => {
-      // If it's been too long since our last successful fetch or we have pending tasks
-      const timeSinceLastFetch = Date.now() - lastFetchRef.current;
-      if (timeSinceLastFetch > POLL_INTERVAL || pendingTasksRef.current.size > 0) {
-        console.log('Polling for tasks as fallback mechanism');
-        fetchRecentTasks();
+    // Function to determine polling interval based on user activity
+    const getPollingInterval = () => {
+      const timeSinceActivity = Date.now() - lastActivityRef.current;
+      return timeSinceActivity > ACTIVITY_TIMEOUT ? INACTIVE_POLL_INTERVAL : ACTIVE_POLL_INTERVAL;
+    };
+
+    // Setup polling with dynamic interval
+    const setupPolling = () => {
+      if (pollingTimerRef.current) {
+        clearTimeout(pollingTimerRef.current);
       }
-    }, POLL_INTERVAL);
 
-    // Get roomId from URL if present
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get('roomId');
+      const pollInterval = getPollingInterval();
+      currentPollIntervalRef.current = pollInterval;
 
-    if (roomId) {
-      console.log(`Task panel connecting to room: ${roomId}`);
-      setupSocket(roomId);
-    }
+      pollingTimerRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          fetchRecentTasks();
+          setupPolling(); // Recursively setup next poll with potentially different interval
+        }
+      }, pollInterval);
+    };
+
+    setupPolling();
 
     return () => {
       if (pollingTimerRef.current) {
-        clearInterval(pollingTimerRef.current);
+        clearTimeout(pollingTimerRef.current);
       }
-      disconnectSocket();
     };
-  }, [isAuthenticated, user]);
-
-  // Socket setup with reconnection
-  const setupSocket = (roomId: string) => {
-    if (socketRef.current) {
-      disconnectSocket();
-    }
-
-    // Connect to Socket.IO with task panel flag
-    const socket = io(window.location.hostname, {
-      path: '/socket.io/',
-      auth: {
-        token: user?.token,
-        roomId: roomId,
-        isTaskPanel: true // Flag to identify this as a task panel connection
-      },
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000
-    });
-
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('Task panel socket connected successfully');
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      // On connection error, we'll fall back to polling
-      lastFetchRef.current = 0; // Force a poll on next interval
-    });
-
-    socket.on('reconnect', (attemptNumber) => {
-      console.log(`Socket reconnected after ${attemptNumber} attempts`);
-      // Refresh tasks after reconnect to ensure we didn't miss any
-      fetchRecentTasks();
-    });
-
-    // Listen for task_created events
-    socket.on('task_created', (taskData) => {
-      console.log('Received new task in panel:', taskData);
-      processNewTask(taskData);
-    });
-  };
-
-  const disconnectSocket = () => {
-    if (socketRef.current) {
-      console.log('Disconnecting task panel socket');
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-  };
-
-  const fetchRecentTasks = async () => {
-    try {
-      console.log('Fetching recent tasks');
-      const res = await fetch(`/api/task/get_recent_task`);
-      if (!res.ok) throw new Error("Failed to fetch recent tasks");
-      const data = await res.json();
-      console.log('Received recent tasks:', data);
-
-      // Limit initial tasks to MAX_TASKS
-      const initialTasks = Array.isArray(data.tasks) ? data.tasks : Array.isArray(data) ? data : [];
-
-      // Update state and remember when we last fetched successfully
-      setTasks(initialTasks.slice(0, MAX_TASKS));
-      lastFetchRef.current = Date.now();
-    } catch (error) {
-      console.error('Error fetching recent tasks:', error);
-    }
-  };
-
-  // Debug effect to verify state updates
-  useEffect(() => {
-    console.log('Tasks state updated:', tasks.length, 'tasks');
-  }, [tasks]);
+  }, [isAuthenticated, user, fetchRecentTasks]);
 
   if (!isAuthenticated) {
     return null;
@@ -242,7 +272,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
       <VStack
         align="stretch"
         height="calc(100% - 70px)"
-        spacing={2.5}  // Consistent, slightly reduced spacing
+        spacing={2.5}
         position="relative"
         overflowY="auto"
         css={{
@@ -261,9 +291,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
           '&::-webkit-scrollbar-thumb:hover': {
             background: 'rgba(0,0,0,0.25)',
           },
-          // Ensure proper padding at bottom of scroll area
           paddingBottom: '12px',
-          // Improve scroll performance
           willChange: 'transform',
           transform: 'translateZ(0)'
         }}
@@ -283,4 +311,4 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
   );
 };
 
-export default AgentTaskPanel;
+export default React.memo(AgentTaskPanel);

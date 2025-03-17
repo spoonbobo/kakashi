@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { Pool } from 'pg';
 
 const pool = new Pool({
@@ -19,10 +19,13 @@ id |        name        |   role   |     start_time      |      end_time       |
 
 */
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        const result = await pool.query(`
-            select 
+        const searchParams = request.nextUrl.searchParams;
+        const afterTaskId = searchParams.get('after');
+        
+        let query = `
+            SELECT 
                 id,
                 name as task_executor,
                 description as task_description,
@@ -31,13 +34,34 @@ export async function GET() {
                 end_time as task_end_time,
                 status as task_status,
                 result as task_result
-            from agent_task t
-            order by t.created_at desc
+            FROM agent_task t
+        `;
+        
+        // If afterTaskId is provided, only return tasks newer than that ID
+        const params: any[] = [];
+        if (afterTaskId) {
+            query += `
+                WHERE t.id > $1 OR 
+                (t.id = $1 AND t.created_at > (SELECT created_at FROM agent_task WHERE id = $1))
+            `;
+            params.push(afterTaskId);
+        }
+        
+        query += `
+            ORDER BY t.created_at DESC
             LIMIT 30
-        `);
+        `;
+        
+        const result = await pool.query(query, params);
+        
+        // If no new tasks, return 304 Not Modified
+        if (result.rows.length === 0 && afterTaskId) {
+            return new NextResponse(null, { status: 304 });
+        }
+        
         return NextResponse.json(result.rows, { status: 200 });
     } catch (error) {
-        console.error('Error fetching messages:', error);
+        console.error('Error fetching tasks:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
