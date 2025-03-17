@@ -3,3 +3,7 @@ uvicorn[all]
 loguru
 mcp[cli]
 python-dotenv
+python-socketio
+dotenv
+websocket-client
+requests

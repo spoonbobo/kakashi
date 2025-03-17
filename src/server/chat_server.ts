@@ -69,8 +69,9 @@ export const setupChatServer = (httpServer: HttpServer) => {
   io.on('connection', async (socket) => {
     const user = socket.data.user;
     let roomId = socket.handshake.auth.roomId;
+    const isAgent = socket.handshake.auth.isAgent;
 
-    if (!roomId) {
+    if (!roomId && !isAgent) {
       roomId = await createRoomInDatabase();
       rooms.set(roomId, new Set());
       messageHistory.set(roomId, []);

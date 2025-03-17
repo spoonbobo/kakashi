@@ -90,8 +90,16 @@ services:
     depends_on:
       - kakashi-chat_server
       - kakashi-psqldb
+      - kakashi-app
     ports:
       - "34430:34430"
+    volumes:
+      - ./mcp/client:/app
+    environment:
+      - SOCKET_URL=${NEXT_PUBLIC_WS_URL}
+      - CLIENT_URL=${CLIENT_URL}
+      - AGENTUSER=${AGENTUSER}
+      - AGENTPASSWORD=${AGENTPASSWORD}
     networks:
       - app-network
 
@@ -106,6 +114,7 @@ services:
     depends_on:
       - kakashi-app
       - kakashi-chat_server
+      - kakashi-mcp_client
     networks:
       - app-network
 

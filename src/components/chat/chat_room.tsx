@@ -85,6 +85,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     }
 
     setLoading(true);
+    console.log("window.location.hostname", window.location.hostname);
 
     const socket = io(window.location.hostname, {
       path: '/socket.io/',
