@@ -134,6 +134,10 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     });
 
     socket.on('user_joined', (user: User) => {
+      if (user.username.startsWith('agent')) {
+        console.log("11111 agent joined the chat");
+        return;
+      }
       setUsers(prev => [...prev, user]);
       setMessages(prevMsgs => [...prevMsgs, createSystemMessage(`${user.username} joined the chat`)]);
     });

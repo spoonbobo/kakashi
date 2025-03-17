@@ -110,7 +110,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
     socket.on('message', async (message: ChatMessage) => {
       const newMessage = { 
         ...message, 
-        id: uuidv4(), 
+        id: message.id || uuidv4(), 
         timestamp: new Date(), 
         username: user.username 
       };
@@ -119,7 +119,15 @@ export const setupChatServer = (httpServer: HttpServer) => {
       await pubClient.rPush(redisKey, JSON.stringify(newMessage));
       await pubClient.lTrim(redisKey, -MAX_STORED_MESSAGES, -1);
 
+      // Broadcast the message to all clients in the room
       io.to(roomId).emit('message', newMessage);
+      
+      // Send acknowledgment back to the sender
+      socket.emit('message_ack', { 
+        id: newMessage.id,
+        status: 'delivered',
+        timestamp: new Date()
+      });
     });
 
     socket.on('disconnect', () => {
@@ -132,7 +140,11 @@ export const setupChatServer = (httpServer: HttpServer) => {
         rooms.get(roomId)?.forEach(u => {
           if (u.id === user.id) rooms.get(roomId)?.delete(u);
         });
-        socket.to(roomId).emit('user_left', user.id);
+        
+        // Only emit user_left if username doesn't start with "agent"
+        if (!user.username.startsWith('agent')) {
+          socket.to(roomId).emit('user_left', user.id);
+        }
       }
     });
   });
