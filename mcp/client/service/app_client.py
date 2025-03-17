@@ -6,8 +6,7 @@ import requests
 from loguru import logger
 from typing import Dict, Any, Optional
 
-from schemas.mcp import MCPAccess
-from schemas.message import Message
+from schemas.mcp import MCPAccess, MCPResponse
 
 """
 class Message(BaseModel):
@@ -91,7 +90,7 @@ class AppClient:
             await self.sio.disconnect()
             logger.info("Disconnected from server")
 
-    async def send_message(self, message: Message, wait_for_ack=True, timeout=10.0) -> bool:
+    async def send_message(self, response: MCPResponse, wait_for_ack=True, timeout=10.0) -> bool:
         """
         Send a message to the current room.
         
@@ -104,10 +103,10 @@ class AppClient:
             bool: True if message was sent successfully, False otherwise
         """
         message_data = {
-            "id": message.id,
-            "text": message.text,
-            "sender": message.sender,
-            "timestamp": message.timestamp
+            "id": response.id,
+            "text": response.text,
+            "sender": response.sender,
+            "timestamp": response.timestamp
         }
         
         logger.info(f"Sending message to room {self.room_id}: {message_data}")
@@ -120,15 +119,15 @@ class AppClient:
                 
                 async def message_ack(data):
                     logger.debug(f"Received ack data: {data}")
-                    if data.get('id') == message.id:
-                        logger.info(f"Message {message.id} acknowledged")
+                    if data.get('id') == response.id:
+                        logger.info(f"Message {response.id} acknowledged")
                         ack_received.set()
                     else:
-                        logger.warning(f"Received ack for different message. Expected: {message.id}, Got: {data.get('id')}")
+                        logger.warning(f"Received ack for different message. Expected: {response.id}, Got: {data.get('id')}")
                 
                 self.sio.on('message_ack', message_ack)
             
-            await self.sio.emit("message", message_data, callback=lambda: ack_received.set() if ack_received else None)
+            await self.sio.emit("message", response.model_dump(), callback=lambda: ack_received.set() if ack_received else None)
             logger.info("Message sent successfully")
             
             if wait_for_ack and ack_received:
@@ -148,7 +147,7 @@ class AppClient:
             logger.error(traceback.format_exc())
             return False
 
-    async def send_message_with_retry(self, message: Message, max_retries=3, initial_timeout=5.0) -> bool:
+    async def send_message_with_retry(self, response: MCPResponse, max_retries=3, initial_timeout=5.0) -> bool:
         """
         Send a message with automatic retries on failure.
         
@@ -164,7 +163,7 @@ class AppClient:
         current_timeout = initial_timeout
         
         while retry_count <= max_retries:
-            result = await self.send_message(message, wait_for_ack=True, timeout=current_timeout)
+            result = await self.send_message(response, wait_for_ack=True, timeout=current_timeout)
             if result:
                 return True
             
