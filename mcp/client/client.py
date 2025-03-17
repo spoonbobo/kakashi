@@ -20,7 +20,6 @@ async def lifespan(app: FastAPI):
     socket_io_client = AppClient()
     socket_url = os.getenv("SOCKET_URL", "")
     client_url = os.getenv("CLIENT_URL", "")
-    token = os.getenv("TOKEN", "")
 
     
     logger.info(f"Getting auth tokens from {client_url}")
@@ -38,7 +37,7 @@ async def lifespan(app: FastAPI):
         "isAgent": True,
     }
 
-    socket_io_client.connect(
+    await socket_io_client.connect(
         url=socket_url,
         auth=auth,
     )
@@ -47,7 +46,7 @@ async def lifespan(app: FastAPI):
     app.state.bypasser = byp
     app.state.socket_io_client = socket_io_client
     yield
-    socket_io_client.disconnect()
+    await socket_io_client.disconnect()
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(mcp_router)

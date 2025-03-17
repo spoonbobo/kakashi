@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
+import { Tooltip } from "@/components/tooltip"
 import { Box, Text, Input, Flex, VStack, IconButton, Spinner, Center } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaPaperPlane } from "react-icons/fa";
@@ -204,19 +205,38 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
                   transition={{ duration: 0.3 }}
                   mb={2}
                 >
-                  <Box
-                    bg={isSystem ? "gray.300" : isCurrentUser ? "blue.500" : "gray.100"}
-                    color={isSystem ? "gray.700" : isCurrentUser ? "white" : "gray.800"}
-                    px={4}
-                    py={2}
-                    borderRadius="lg"
-                    boxShadow="sm"
-                    maxWidth={isSystem ? "60%" : "100%"}
-                  >
-                    {!isSystem && <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>}
-                    <Text>{msg.text}</Text>
-                    <Text fontSize="xs" textAlign="right">{new Date(msg.timestamp).toLocaleTimeString()}</Text>
-                  </Box>
+                  <Tooltip content={new Date(msg.timestamp).toLocaleString([], {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                  })}>
+                    <Box
+                      bg={isSystem ? "gray.200" : isCurrentUser ? "blue.500" : "gray.100"}
+                      color={isSystem ? "gray.600" : isCurrentUser ? "white" : "gray.800"}
+                      px={4}
+                      py={isSystem ? 1 : 2}
+                      borderRadius={isSystem ? "md" : "lg"}
+                      boxShadow={isSystem ? "none" : "sm"}
+                      maxWidth={isSystem ? "70%" : "100%"}
+                      width={isSystem ? "auto" : undefined}
+                      textAlign={isSystem ? "center" : "left"}
+                      borderWidth={isSystem ? "1px" : "0"}
+                      borderColor={isSystem ? "gray.300" : "transparent"}
+                      mx={isSystem ? "auto" : undefined}
+                    >
+                      {!isSystem && <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>}
+                      <Text fontSize={isSystem ? "sm" : "md"} fontStyle={isSystem ? "italic" : "normal"}>
+                        {msg.text}
+                      </Text>
+                      {!isSystem && <Text fontSize="xs" textAlign="right">
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      </Text>}
+                    </Box>
+                  </Tooltip>
                 </MotionFlex>
               );
             })}
@@ -225,7 +245,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
         </VStack>
       </MotionBox>
 
-      <Box p={4}>
+      <Box p={4} mb="60px">
         <Flex gap={2}>
           <Input
             placeholder="Type your message..."

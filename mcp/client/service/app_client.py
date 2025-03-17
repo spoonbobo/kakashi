@@ -8,43 +8,40 @@ class AppClient:
 
     """
     def __init__(self):
-        self.sio = socketio.Client(logger=True, engineio_logger=True)
+        self.sio = socketio.AsyncClient(logger=True, engineio_logger=True)
         
-        # Add event handlers for debugging
         @self.sio.event
-        def connect():
+        async def connect():
             logger.info("Socket.IO connected successfully")
             
         @self.sio.event
-        def connect_error(data):
+        async def connect_error(data):
             logger.error(f"Socket.IO connection error: {data}")
             
         @self.sio.event
-        def disconnect():
+        async def disconnect():
             logger.info("Socket.IO disconnected")
 
-    def connect(
+    async def connect(
         self,
         url: str,
         auth: dict,
     ):
         if self.sio.connected:
-            self.sio.disconnect()
+            await self.sio.disconnect()
 
-        # Log authentication details (be careful with sensitive info)
         logger.info(f"Connecting to {url} with auth: {auth}")
         
         try:
-            # Try connecting without specifying namespaces
-            self.sio.connect(url, auth=auth, wait_timeout=10)
+            await self.sio.connect(url, auth=auth, wait_timeout=10)
             logger.info(f"Connected to {url}")
         except Exception as e:
             logger.error(f"Connection error: {str(e)}")
-            # Print more detailed error information
             import traceback
             logger.error(traceback.format_exc())
 
-    def disconnect(self):
-        self.sio.disconnect()
+    async def disconnect(self):
+        await self.sio.disconnect()
 
-   
+    async def send_message(self, message: str):
+        await self.sio.emit("message", message)

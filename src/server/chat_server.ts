@@ -64,7 +64,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
   });
 
   const MAX_INITIAL_MESSAGES = 50;
-  const MAX_STORED_MESSAGES = 500; // Adjust as needed
+  const MAX_STORED_MESSAGES = 500;
 
   io.on('connection', async (socket) => {
     const user = socket.data.user;
