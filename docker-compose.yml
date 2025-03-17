@@ -70,6 +70,7 @@ services:
       - PGDATABASE=${PGDATABASE}
       - PGPORT=${PGPORT}
       - JWT_SECRET=${JWT_SECRET}
+      - NEXT_PUBLIC_MCP_CLIENT_URL=${MCP_CLIENT_URL}
       - NEXT_PUBLIC_JWT_SECRET=${NEXT_PUBLIC_JWT_SECRET}
       - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL}
       - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
@@ -91,15 +92,29 @@ services:
       - kakashi-chat_server
       - kakashi-psqldb
       - kakashi-app
+      - kakashi-llm
     ports:
       - "34430:34430"
     volumes:
       - ./mcp/client:/app
+      - ./mcp/servers:/servers
     environment:
       - SOCKET_URL=${NEXT_PUBLIC_WS_URL}
       - CLIENT_URL=${CLIENT_URL}
       - AGENTUSER=${AGENTUSER}
       - AGENTPASSWORD=${AGENTPASSWORD}
+      - OLLAMA_API_BASE_URL=http://kakashi-llm:11434
+      - OLLAMA_MODEL=llama3.2:latest
+    networks:
+      - app-network
+
+  kakashi-llm:
+    image: ollama/ollama:latest
+    container_name: kakashi-llm
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
     networks:
       - app-network
 
@@ -135,7 +150,7 @@ volumes:
   redis_data:
   postgres_data:
   qdrant_data:
-
+  ollama_data:
 
 networks:
   app-network:

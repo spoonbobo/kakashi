@@ -240,12 +240,55 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     setMentionState({ isActive: false, startPosition: 0, searchText: '' });
   }, [message, mentionState]);
 
+  const accessMCP = useCallback((agentName: string, messageText: string) => {
+    const messageHistory = messages.slice(-10).map(msg => ({
+      sender: msg.sender,
+      text: msg.text,
+      timestamp: msg.timestamp
+    }));
+
+    const contextData = {
+      sender: currentUser?.username,
+      text: messageText,
+      mentioned_agent: agentName,
+      history: messageHistory,
+      room_id: roomIdRef.current
+    };
+
+    // Direct API call without testing connectivity first
+    fetch(`/mcp/api/app/access`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(contextData)
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => console.log('Agent response:', data))
+      .catch(error => {
+        console.error('Error accessing agent:', error);
+        // More detailed error logging
+        console.error('Error details:', error.message);
+      });
+  }, [messages, currentUser?.username]);
+
   const sendMessage = useCallback(() => {
     if (socketRef.current && message.trim()) {
+      const agentMentionRegex = /@(agent\S*)\b/g;
+      const mentionMatches = [...message.matchAll(agentMentionRegex)];
+
+      mentionMatches.forEach(match => {
+        const agentName = match[1];
+        accessMCP(agentName, message);
+      });
+
       socketRef.current.emit('message', { text: message, sender: currentUser?.username });
       setMessage("");
     }
-  }, [message, currentUser?.username]);
+  }, [message, currentUser?.username, accessMCP]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") sendMessage();

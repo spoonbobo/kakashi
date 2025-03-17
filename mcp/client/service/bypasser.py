@@ -4,10 +4,10 @@ class Bypasser:
 
     """
     def __init__(
-        self
+        self, servers
         ):
         pass
 
 
     async def bypass(self, query: str) -> str:
-        return ''
+        return 'weather'

@@ -8,3 +8,4 @@ python-socketio
 dotenv
 websocket-client
 requests
+ollama

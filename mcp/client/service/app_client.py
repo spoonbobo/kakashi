@@ -54,7 +54,7 @@ class AppClient:
         }
 
         # Initialize socket client
-        self.sio = socketio.AsyncClient(logger=True, engineio_logger=True)
+        self.sio = socketio.AsyncClient(logger=True, engineio_logger=True) # type: ignore
         
         # Set up event handlers
         @self.sio.event
