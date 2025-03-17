@@ -1,4 +1,5 @@
 services:
+  # database services
   kakashi-redis:
     image: redis:latest
     container_name: kakashi-redis
@@ -35,6 +36,7 @@ services:
     networks:
       - app-network
 
+  # main application services
   kakashi-chat_server:
     build:
       context: .
@@ -79,11 +81,21 @@ services:
     networks:
       - app-network
 
-  kakashi-mcp_filesystem:
-    extends:
-      file: docker/mcp.yml
-      service: mcp_filesystem
+  # mcp
+  kakashi-mcp_client:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mcp.client
+    container_name: kakashi-mcp_client
+    depends_on:
+      - kakashi-chat_server
+      - kakashi-psqldb
+    ports:
+      - "34430:34430"
+    networks:
+      - app-network
 
+  # supporting services
   kakashi-nginx:
     image: nginx:latest
     container_name: kakashi-nginx

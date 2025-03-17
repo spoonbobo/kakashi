@@ -1,0 +1,5 @@
+fastapi
+uvicorn[all]
+loguru
+mcp[cli]
+python-dotenv

@@ -1,9 +1,0 @@
-services:
-  mcp_filesystem:
-    build:
-      context: .
-      dockerfile: Dockerfile.mcp_filesystem
-    container_name: mcp_filesystem
-    networks:
-      - app-network
-

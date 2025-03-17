@@ -15,7 +15,8 @@ import ChatRoom from '../components/chat/chat_room';
 import { KnowledgeBase } from '../components/kb/knowledge_base';
 import "./globals.css"
 import Image from 'next/image';
-import logo from '/src/images/logo.png'; // Ensure the path is correct
+import gemma3 from '/src/images/gemma3.png';
+// import logo from '/src/images/logo.png'; // Ensure the path is correct
 
 
 export default function Home() {
@@ -181,20 +182,35 @@ export default function Home() {
           initialLeftWidth="75%"
         />
       </Box>
-      <Box position="absolute" bottom="30px" right="10px" display="flex" alignItems="center">
-        <Box width="100px" height="auto" overflow="hidden" mr="2">
-          <Image
-            src={logo}
-            alt="Logo"
-            layout="responsive"
-            width={50} // Adjust width as needed
-            height={50} // Adjust height as needed
-            className="shiny-logo"
-          />
-        </Box>
-        <Text fontSize="sm" color="gray.500">
-          Version 0.0.2
+      <Box position="absolute" bottom="0" width="100%" display="flex" justifyContent="space-between" alignItems="flex-end" px="10px">
+        {/* Version on the left */}
+        <Text fontSize="sm" color="gray.500" mb="2">
+          v0.0.2
         </Text>
+
+        {/* Gemma 3 and Logo on the right */}
+        <Box display="flex" alignItems="flex-end">
+          <Box width="100px" height="auto" overflow="hidden" mr="2" mb="2">
+            <Image
+              src={gemma3}
+              alt="Gemma3"
+              layout="responsive"
+              width={50}
+              height={50}
+              className="shiny-logo"
+            />
+          </Box>
+          {/* <Box width="100px" height="auto" overflow="hidden" mb="2">
+            <Image
+              src={logo}
+              alt="Logo"
+              layout="responsive"
+              width={50}
+              height={50}
+              className="shiny-logo"
+            />
+          </Box> */}
+        </Box>
       </Box>
     </Box>
   );

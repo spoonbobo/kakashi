@@ -4,10 +4,10 @@ import jwt from 'jsonwebtoken';
 // import bcrypt from 'bcryptjs';
 
 const pool = new Pool({
-  user: process.env.PGUSER,        // spoonbobo
-  host: process.env.PGHOST,        // kakashi-psqldb
-  database: process.env.PGDATABASE,// postgres
-  password: process.env.PGPASSWORD,// bobo1234
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,
+  database: process.env.PGDATABASE,
+  password: process.env.PGPASSWORD,
   port: parseInt(process.env.PGPORT || '5432', 10),
 });
 

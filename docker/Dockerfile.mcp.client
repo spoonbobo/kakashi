@@ -1,0 +1,26 @@
+# Stage 1: Build stage
+FROM python:3.12-slim-bookworm AS builder
+
+WORKDIR /app
+
+# Install dependencies
+COPY mcp/client/requirements.txt .
+RUN pip install --user -r requirements.txt
+
+# Stage 2: Runtime stage
+FROM python:3.12-slim-bookworm
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /root/.local /root/.local
+COPY mcp/client .
+
+# Ensure the installed binary is on the `PATH`
+ENV PATH="/root/.local/bin/:$PATH"
+
+EXPOSE 34430
+
+CMD ["python", "client.py", "--host", "0.0.0.0", "--port", "34430"]
+# docker build -t kakashi-mcp-client -f docker/Dockerfile.mcp.client .
+# docker run -it -p 34430:34430 kakashi-mcp-client
