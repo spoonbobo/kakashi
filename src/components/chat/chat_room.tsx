@@ -22,6 +22,12 @@ interface User {
   username: string;
 }
 
+interface MentionState {
+  isActive: boolean;
+  startPosition: number;
+  searchText: string;
+}
+
 const LOCAL_STORAGE_KEY_PREFIX = 'chat_messages_';
 
 const MAX_CACHED_MESSAGES = 100;
@@ -54,6 +60,49 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     sender: 'system',
     timestamp: new Date()
   }), []);
+
+  // Add mention state
+  const [mentionState, setMentionState] = useState<MentionState>({
+    isActive: false,
+    startPosition: 0,
+    searchText: ''
+  });
+
+  const [agents] = useState<User[]>([
+    { id: 'agent', username: 'agent' },
+  ]);
+
+  // Animation variants for mention suggestions
+  const mentionDropdownVariants = {
+    hidden: { opacity: 0, y: 10, height: 0 },
+    visible: { opacity: 1, y: 0, height: 'auto', transition: { staggerChildren: 0.05 } },
+    exit: { opacity: 0, y: 10, height: 0 }
+  };
+
+  const mentionItemVariants = {
+    hidden: { opacity: 0, x: -10 },
+    visible: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: 10 }
+  };
+
+  // Modify to exclude current user and include specified agents
+  const getMentionSuggestions = useCallback(() => {
+    if (!mentionState.isActive) return [];
+
+    // Filter out current user and include only other users plus dummy agents
+    const filteredUsers = users.filter(user =>
+      user.username !== currentUser?.username &&
+      user.id !== currentUser?.id?.toString()
+    );
+
+    const allUsers = [...filteredUsers, ...agents];
+    const uniqueUsers = Array.from(new Map(allUsers.map(user => [user.username, user])).values());
+
+    return mentionState.searchText.trim() === ''
+      ? uniqueUsers
+      : uniqueUsers.filter(user =>
+        user.username.toLowerCase().includes(mentionState.searchText.toLowerCase()));
+  }, [users, agents, mentionState, currentUser]);
 
   // Load cached messages on mount
   useEffect(() => {
@@ -158,7 +207,39 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
   }, [messages]);
 
   // const handleRetryConnection = useCallback(() => setRetryCount(prev => prev + 1), []);
-  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setMessage(e.target.value), []);
+  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setMessage(newValue);
+
+    // Handle @ mentions
+    const lastAtIndex = newValue.lastIndexOf('@');
+    if (lastAtIndex >= 0 && (lastAtIndex === 0 || newValue[lastAtIndex - 1] === ' ')) {
+      // Extract search text after @
+      const searchText = newValue.substring(lastAtIndex + 1);
+
+      // If there's a space after the search text, disable mention
+      if (searchText.includes(' ')) {
+        setMentionState({ isActive: false, startPosition: 0, searchText: '' });
+      } else {
+        setMentionState({
+          isActive: true,
+          startPosition: lastAtIndex,
+          searchText: searchText
+        });
+      }
+    } else {
+      setMentionState({ isActive: false, startPosition: 0, searchText: '' });
+    }
+  }, []);
+
+  const handleSelectMention = useCallback((username: string) => {
+    const beforeMention = message.substring(0, mentionState.startPosition);
+    const afterMention = message.substring(mentionState.startPosition + mentionState.searchText.length + 1);
+
+    setMessage(`${beforeMention}@${username} ${afterMention}`);
+    setMentionState({ isActive: false, startPosition: 0, searchText: '' });
+  }, [message, mentionState]);
+
   const sendMessage = useCallback(() => {
     if (socketRef.current && message.trim()) {
       socketRef.current.emit('message', { text: message, sender: currentUser?.username });
@@ -250,7 +331,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
       </MotionBox>
 
       <Box p={4} mb="60px">
-        <Flex gap={2}>
+        <Flex gap={2} position="relative">
           <Input
             placeholder="Type your message..."
             value={message}
@@ -266,6 +347,53 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
           >
             <FaPaperPlane />
           </IconButton>
+
+          {/* Mention suggestions dropdown with animations */}
+          <AnimatePresence>
+            {mentionState.isActive && (
+              <MotionBox
+                position="absolute"
+                bottom="100%"
+                left="10px"
+                width="250px"
+                bg="white"
+                borderRadius="md"
+                boxShadow="md"
+                zIndex={10}
+                maxHeight="200px"
+                overflowY="auto"
+                border="1px solid"
+                borderColor="gray.200"
+                variants={mentionDropdownVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                {getMentionSuggestions().length > 0 ? (
+                  getMentionSuggestions().map(user => (
+                    <MotionBox
+                      key={user.id}
+                      p={2}
+                      cursor="pointer"
+                      _hover={{ bg: "gray.100" }}
+                      onClick={() => handleSelectMention(user.username)}
+                      variants={mentionItemVariants}
+                    >
+                      {user.username}
+                    </MotionBox>
+                  ))
+                ) : (
+                  <MotionBox
+                    p={2}
+                    color="gray.500"
+                    variants={mentionItemVariants}
+                  >
+                    No users found
+                  </MotionBox>
+                )}
+              </MotionBox>
+            )}
+          </AnimatePresence>
         </Flex>
       </Box>
     </Flex>
