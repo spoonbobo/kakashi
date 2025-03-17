@@ -70,6 +70,14 @@ export const setupChatServer = (httpServer: HttpServer) => {
     const user = socket.data.user;
     let roomId = socket.handshake.auth.roomId;
     const isAgent = socket.handshake.auth.isAgent;
+    const isTaskPanel = socket.handshake.auth.isTaskPanel;
+
+    // Special handling for task logger connections
+    if (isTaskPanel && roomId) {
+      socket.join(roomId);
+      console.log(`Task Panel connected for room: ${roomId}`);
+      return; // Skip the rest of the connection handling
+    }
 
     if (!roomId && !isAgent) {
       roomId = await createRoomInDatabase();
@@ -118,6 +126,36 @@ export const setupChatServer = (httpServer: HttpServer) => {
       // Store message in Redis
       await pubClient.rPush(redisKey, JSON.stringify(newMessage));
       await pubClient.lTrim(redisKey, -MAX_STORED_MESSAGES, -1);
+
+      // Check if this is a tool call message and create a task
+      if (message.text && message.text.includes('<tools>')) {
+        try {
+          const taskName = message.text.match(/<tools>\['(.+?)'\]<\/tools>/)?.[1] || 'DUMMY';
+          await createTaskInDatabase({
+            name: taskName,
+            role: message.sender,
+            description: message.text,
+            task_id: newMessage.id,
+            room_id: roomId
+          });
+          
+          // Create task object
+          const taskData = {
+            id: newMessage.id,
+            task_executor: message.sender,
+            task_description: message.text,
+            task_create_time: newMessage.timestamp,
+            task_status: 'pending',
+            task_result: null
+          };
+          
+          // Broadcast task creation event to all clients in the room
+          console.log(`Emitting task_created event to room ${roomId}:`, taskData);
+          io.to(roomId).emit('task_created', taskData);
+        } catch (error) {
+          console.error('Error creating task:', error);
+        }
+      }
 
       // Broadcast the message to all clients in the room
       io.to(roomId).emit('message', newMessage);
@@ -180,6 +218,35 @@ const createRoomInDatabase = async (): Promise<string> => {
     return data.sessionId;
   } catch (error) {
     console.error('Error creating room:', error);
+    throw error;
+  }
+};
+
+// Add this helper function for task creation
+const createTaskInDatabase = async (taskData: {
+  name: string;
+  role: string;
+  description: string;
+  task_id: string;
+  room_id: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+}): Promise<any> => {
+  try {
+    const response = await fetch(`${process.env.CLIENT_URL}/api/task/create_task`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(taskData)
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to create task in database');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating task:', error);
     throw error;
   }
 }; 

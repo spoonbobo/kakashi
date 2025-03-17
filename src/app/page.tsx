@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Text, Box } from '@chakra-ui/react';
 import { Navbar } from '../components/navbar';
 import WelcomeBox from '../components/box/welcome_box';
-import AgentTaskPanel from '../components/panel/agent_task_panel';
+import AgentTaskPanel from '../components/panel/task_panel';
 import { ResizableLayoutV } from '@/components/stretch/resizeable_layoutV';
 import { ResizableLayoutH } from '@/components/stretch/resizeable_layoutH';
 import { ListRooms } from '../components/chat/list_rooms';

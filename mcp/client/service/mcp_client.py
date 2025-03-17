@@ -6,6 +6,7 @@ dotenv.load_dotenv()
 from loguru import logger
 from ollama import Client
 from mcp import ClientSession, StdioServerParameters
+from mcp.types import Tool as mcp_tool
 from mcp.client.stdio import stdio_client
 
 from schemas.mcp import MCPAccess, MCPResponse
@@ -20,7 +21,7 @@ class MCPClientManager:
         self.bypasser = Bypasser(servers)
         self.exit_stack = {server: AsyncExitStack() for server in self.servers}
         self.ollama_client = Client(host=os.getenv("OLLAMA_API_BASE_URL"))
-        self.ollama_model = os.getenv("OLLAMA_MODEL")
+        self.ollama_model = os.getenv("OLLAMA_MODEL", "")
 
 
     async def connect_to_servers(self) -> None:
@@ -48,6 +49,22 @@ class MCPClientManager:
             tools = response.tools
             logger.info(f"Connected to server {server} with tools: {tools}")
 
+    def convert_mcp_tool_desc_to_ollama_tool(self, tool: mcp_tool) -> dict:
+        ollama_tool = {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": 
+                    {
+                        "type": "object",
+                        "properties": tool.inputSchema["properties"],
+                        "required": tool.inputSchema["required"]
+                    }
+            }
+        }
+        return ollama_tool
+
     async def respond(
         self, 
         access: MCPAccess, 
@@ -70,11 +87,37 @@ class MCPClientManager:
             "content": query,
         })
 
+        tools = await server.list_tools()
+        tools = tools.tools
+        logger.info(f"Tools: {tools}")
+        ollama_tools = [self.convert_mcp_tool_desc_to_ollama_tool(tool) for tool in tools]
+        logger.info(f"Ollama tools: {ollama_tools}")
+
+
+        llm_response = self.ollama_client.chat(
+            model=self.ollama_model,
+            messages=conversions,
+            tools=ollama_tools,
+        )
+        
+        tool_calls = llm_response.message.tool_calls
+        if tool_calls is None:
+            tool_calls = []
+        tools_called = [tool_call.function.name for tool_call in tool_calls]
+        logger.info(f"Tools called: {tools_called}")
         response = MCPResponse(
             sender=access.mentioned_agent,
-            text=access.text,
+            text=f"<tools>{tools_called}</tools>",
         )
         return response
+
+    async def call_tool(
+        self, 
+        tool_name: str, 
+        tool_args: dict,
+        server: str
+    ):
+        pass
 
     async def cleanup(self):
         for server in self.servers:

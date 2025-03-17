@@ -2,7 +2,7 @@ import { Box, HStack, Text, Icon, Flex, IconButton } from '@chakra-ui/react';
 import { Tooltip } from "@/components/tooltip"
 import {
     FaCog,
-    FaCheck,
+    // FaCheck,
     FaTasks,
     FaPlus,
     FaQuestionCircle,
@@ -106,18 +106,6 @@ export const Navbar = memo(function Navbar({
                         onClick={onTasksClick}
                     >
                         <Icon as={FaTasks} />
-                    </IconButton>
-                </Tooltip>
-                <Tooltip content="Approvals">
-                    <IconButton
-                        bg="transparent"
-                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                        aria-label="Completed"
-                        onClick={onApprovalsClick}
-                    >
-                        <Icon as={FaCheck} />
                     </IconButton>
                 </Tooltip>
                 <Tooltip content="Knowledge Base">

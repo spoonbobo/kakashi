@@ -255,7 +255,6 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
       room_id: roomIdRef.current
     };
 
-    // Direct API call without testing connectivity first
     fetch(`/mcp/api/app/access`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -319,8 +318,8 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
           <AnimatePresence initial={false}>
             {messages.map((msg) => {
               const isCurrentUser = msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString();
-              const isSystem = msg.sender === 'system';
-
+              const isToolCall = msg.text.includes('<tools>') && msg.text.includes('</tools>');
+              const isSystem = msg.sender === 'system' || isToolCall;
               return (
                 <MotionFlex
                   key={msg.id}
@@ -358,7 +357,9 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
                     >
                       {!isSystem && <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>}
                       <Text fontSize={isSystem ? "sm" : "md"} fontStyle={isSystem ? "italic" : "normal"}>
-                        {msg.text}
+                        {isToolCall
+                          ? `${msg.sender} initiated task "${msg.text.match(/<tools>\['(.+?)'\]<\/tools>/)?.[1] || 'DUMMY'}".`
+                          : msg.text}
                       </Text>
                       {!isSystem && <Text fontSize="xs" textAlign="right">
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}

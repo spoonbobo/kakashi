@@ -33,6 +33,7 @@ export async function GET() {
                 result as task_result
             from agent_task t
             order by t.created_at desc
+            LIMIT 30
         `);
         return NextResponse.json(result.rows, { status: 200 });
     } catch (error) {

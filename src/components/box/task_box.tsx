@@ -1,94 +1,175 @@
+import React from 'react';
 import { Box, Text, Badge, Flex } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 interface TaskBoxProps {
-    item: {
-        id: string;
-        task_executor: string;
-        task_description: string;
-        task_create_time: string;
-        task_start_time: string;
-        task_end_time: string;
-        task_status: string;
-        task_result: string;
-    };
+    item: any;
     onClick: () => void;
+    height?: string;
+    isNew?: boolean;
 }
 
-const MotionBox = motion.create(Box);
+const MotionBox = motion(Box);
+const MotionText = motion(Text);
+const MotionBadge = motion(Badge);
+const MotionFlex = motion(Flex);
 
-export const TaskBox = ({ item, onClick }: TaskBoxProps) => {
-    const [progress, setProgress] = useState(0);
-    const statusColor = {
-        completed: 'green',
-        in_progress: 'blue',
-        pending: 'gray'
-    }[item.task_status] || 'gray';
+export const TaskBox: React.FC<TaskBoxProps> = ({
+    item,
+    onClick,
+    height = "100px",
+    isNew = false
+}) => {
+    // Validate task data
+    if (!item) {
+        console.error('TaskBox received invalid item:', item);
+        return null;
+    }
 
-    // Simulate fake progress
-    useEffect(() => {
-        if (item.task_status === 'in_progress') {
-            const interval = setInterval(() => {
-                setProgress(prev => (prev < 100 ? prev + Math.random() * 5 : 100));
-            }, 1000);
-            return () => clearInterval(interval);
-        } else if (item.task_status === 'completed') {
-            setProgress(100);
-        } else {
-            setProgress(0);
+    const getStatusColor = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case 'completed':
+                return 'green';
+            case 'failed':
+                return 'red';
+            case 'in_progress':
+                return 'blue';
+            case 'pending':
+            default:
+                return 'orange';
         }
-    }, [item.task_status]);
+    };
+
+    // Format the task description to be more concise
+    const formatDescription = (description: string) => {
+        if (!description) return 'No description';
+
+        // Remove tool tags
+        let text = description.replace(/<tools>.*?<\/tools>/g, '');
+
+        // Limit length
+        if (text.length > 100) {
+            text = text.substring(0, 97) + '...';
+        }
+
+        return text;
+    };
+
+    // Format timestamp to be more compact
+    const formatTime = (timestamp: string | Date) => {
+        if (!timestamp) return '';
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+            ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    };
+
+    // Simplified container animation
+    const containerVariants = {
+        hidden: {
+            y: -20,
+            opacity: 0,
+            scale: 0.95
+        },
+        visible: {
+            y: 0,
+            opacity: 1,
+            scale: 1,
+            transition: {
+                type: "spring",
+                damping: 14,
+                stiffness: 220,
+                mass: 1
+            }
+        }
+    };
 
     return (
         <MotionBox
-            key={item.id}
-            p={3}
+            p={2.5}
+            borderWidth="1px"
             borderRadius="md"
-            _hover={{ bg: "gray.100" }}
-            height="auto"
+            boxShadow="sm"
+            cursor="pointer"
+            onClick={onClick}
+            height={height}
+            minHeight="90px"
+            maxHeight="110px"
+            overflow="hidden"
             display="flex"
             flexDirection="column"
-            gap={1}
-            position="relative"
-            overflow="hidden"
-            bg="white"
-            boxShadow="md"
-            onClick={onClick}
-            cursor="pointer"
+            margin="0"
+            mb={2}
+            layoutId={item.id}
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+            sx={{
+                transition: 'all 0.3s ease',
+                _hover: {
+                    boxShadow: 'md',
+                    borderColor: '#63B3ED', // blue.300 equivalent
+                    transform: 'translateY(-2px)'
+                },
+                ...(isNew ? {
+                    boxShadow: "0px 0px 10px 2px rgba(66, 153, 225, 0.5)",
+                    borderColor: "rgba(66, 153, 225, 0.8)",
+                    backgroundColor: "rgba(235, 248, 255, 0.6)"
+                } : {})
+            }}
         >
-            {/* Progress bar overlay */}
-            <motion.div
-                style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    height: '100%',
-                    width: `${progress}%`,
-                    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                    zIndex: -1
-                }}
-                animate={{
-                    width: `${progress}%`
-                }}
-                transition={{
-                    duration: 0.5,
-                    ease: 'easeInOut'
-                }}
-            />
+            <MotionFlex
+                justify="space-between"
+                align="center"
+                mb={1.5}
+            >
+                <MotionText
+                    fontWeight="bold"
+                    noOfLines={1}
+                    maxWidth="70%"
+                    fontSize="sm"
+                >
+                    {item.name || 'Task'}
+                </MotionText>
+                <MotionBadge
+                    colorScheme={getStatusColor(item.task_status)}
+                    fontSize="xs"
+                >
+                    {item.task_status || 'pending'}
+                </MotionBadge>
+            </MotionFlex>
 
-            <Flex justify="space-between" align="center">
-                <Text fontWeight="bold">{item.task_executor}</Text>
-                <Badge colorScheme={statusColor}>{item.task_status}</Badge>
-            </Flex>
-            <Text fontSize="sm">{item.task_description}</Text>
-            <Box
-                mt={2}
-                h="2px"
-                bg="blue.200"
-                width={`${progress}%`}
-                transition="width 0.5s ease"
-            />
+            <MotionFlex
+                justify="space-between"
+                align="center"
+                mb={1}
+            >
+                <MotionText
+                    fontSize="xs"
+                    color="gray.600"
+                    noOfLines={1}
+                    maxWidth="70%"
+                >
+                    {item.task_executor}
+                </MotionText>
+                <MotionText
+                    fontSize="2xs"
+                    color="gray.500"
+                >
+                    {formatTime(item.task_create_time)}
+                </MotionText>
+            </MotionFlex>
+
+            <MotionText
+                fontSize="xs"
+                noOfLines={2}
+                flex="1"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                lineHeight="1.3"
+                mt={0.5}
+            >
+                {formatDescription(item.task_description)}
+            </MotionText>
         </MotionBox>
     );
 };
