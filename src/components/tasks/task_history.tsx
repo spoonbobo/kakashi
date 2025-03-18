@@ -38,8 +38,9 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
     items: [
       { label: "All", value: "all" },
       { label: "Pending", value: "pending" },
-      { label: "Running", value: "running" },
+      { label: "Approved", value: "approved" },
       { label: "Denied", value: "denied" },
+      { label: "Running", value: "running" },
       { label: "Successful", value: "successful" },
       { label: "Failed", value: "failed" },
     ],
