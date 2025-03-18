@@ -36,7 +36,7 @@ export const TaskBox = memo<TaskBoxProps>(({
     // Use the shared status color utility instead of local function
     const getStatusColor = (status: string) => {
         const colorProps = getStatusColorProps(status);
-        return colorProps.colorScheme;
+        return colorProps;
     };
 
     // Format the task description to be more concise
@@ -150,9 +150,15 @@ export const TaskBox = memo<TaskBoxProps>(({
                             flexShrink={0}
                         >
                             <MotionBadge
-                                colorScheme={getStatusColor(item.status)}
+                                colorScheme={getStatusColor(item.status).colorScheme}
                                 fontSize="xs"
                                 flexShrink={0}
+                                bg={getStatusColor(item.status).bg}
+                                color={getStatusColor(item.status).color}
+                                variant="subtle"
+                                px={1.5}
+                                py={0.5}
+                                borderRadius="md"
                                 mb={1}
                             >
                                 {item.status}
@@ -205,9 +211,15 @@ export const TaskBox = memo<TaskBoxProps>(({
                             {trimSummarization(item.summarization)}
                         </MotionText>
                         <MotionBadge
-                            colorScheme={getStatusColor(item.status)}
+                            colorScheme={getStatusColor(item.status).colorScheme}
                             fontSize="xs"
                             flexShrink={0}
+                            bg={getStatusColor(item.status).bg}
+                            color={getStatusColor(item.status).color}
+                            variant="subtle"
+                            px={1.5}
+                            py={0.5}
+                            borderRadius="md"
                         >
                             {item.status}
                         </MotionBadge>

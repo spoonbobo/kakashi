@@ -27,6 +27,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
   const { isAuthenticated } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -46,7 +47,9 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
 
   const fetchTasks = useCallback(async (status: string) => {
     console.log("fetchTasks called with status:", status);
-    setLoading(true);
+    if (initialLoad) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -77,7 +80,6 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
       }
 
       const data = await response.json();
-      console.log("Received tasks:", data);
 
       if (data.tasks && Array.isArray(data.tasks)) {
         setTasks(data.tasks);
@@ -91,8 +93,11 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
       setError('Error loading tasks. Please try again later.');
     } finally {
       setLoading(false);
+      if (initialLoad) {
+        setInitialLoad(false);
+      }
     }
-  }, [currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, initialLoad]);
 
   useEffect(() => {
     console.log("Initial useEffect running, isAuthenticated:", isAuthenticated);
@@ -110,9 +115,16 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
 
   // Add visibility change event listener to refresh when tab becomes visible again
   useEffect(() => {
+    let lastRefreshTime = Date.now();
+    const minimumRefreshInterval = 3000; // Increase to 3 seconds to further reduce volume button triggers
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isAuthenticated) {
+      const currentTime = Date.now();
+      if (document.visibilityState === 'visible' &&
+        isAuthenticated &&
+        currentTime - lastRefreshTime > minimumRefreshInterval) {
         console.log("Tab became visible, refreshing tasks");
+        lastRefreshTime = currentTime;
         fetchTasks(statusFilter);
       }
     };
@@ -121,8 +133,11 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
 
     // Also refresh when the component becomes visible after navigation
     const handleFocus = () => {
-      console.log("Window focused, refreshing tasks");
-      if (isAuthenticated) {
+      const currentTime = Date.now();
+      // More aggressive filtering for focus events which are often triggered by volume buttons
+      if (isAuthenticated && currentTime - lastRefreshTime > minimumRefreshInterval) {
+        console.log("Window focused, refreshing tasks");
+        lastRefreshTime = currentTime;
         fetchTasks(statusFilter);
       }
     };
@@ -171,7 +186,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
       }
 
       // Then schedule a full refresh after a short delay
-      setTimeout(() => debouncedRefresh(), 500);
+      setTimeout(() => fetchTasks(statusFilter), 500);
     };
 
     // Add event listeners
@@ -183,7 +198,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
       window.removeEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
       window.removeEventListener('taskHistoryForceRefresh', handleForceRefresh as EventListener);
     };
-  }, [statusFilter]);
+  }, [statusFilter, fetchTasks]);
 
   // Helper function for debouncing
   const debounce = (func: Function, wait: number) => {
@@ -367,7 +382,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
         </Flex>
       </Flex>
 
-      {loading ? (
+      {initialLoad && loading ? (
         <Spinner size="xl" alignSelf="center" my={8} />
       ) : error ? (
         <Text color="red.500" textAlign="center" my={8}>{error}</Text>
