@@ -145,36 +145,17 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
     fetchRecentTasks(true);
   };
 
-  // Listen for refresh events from task logger
-  useEffect(() => {
-    const handleRefreshEvent = (event) => {
-      console.log("Task panel received refresh event", event?.detail);
+  // Add a debounce function to prevent too many refreshes
+  const debounce = (func: Function, wait: number) => {
+    let timeout: NodeJS.Timeout | null = null;
 
-      // If we have a specific task in the event detail, update just that task
-      if (event?.detail?.taskId) {
-        setTasks(prevTasks =>
-          prevTasks.map(task =>
-            task.id === event.detail.taskId
-              ? { ...task, status: event.detail.status }
-              : task
-          )
-        );
-      }
-
-      // Also do a full refresh to ensure everything is up to date
-      fetchRecentTasks(true);
+    return (...args: any[]) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
     };
+  };
 
-    // Add event listener
-    window.addEventListener('taskPanelRefresh', handleRefreshEvent);
-
-    // Clean up
-    return () => {
-      window.removeEventListener('taskPanelRefresh', handleRefreshEvent);
-    };
-  }, []);
-
-  // More aggressive status update listener
+  // Modify the task status update listener to use debounce
   useEffect(() => {
     const handleTaskStatusUpdate = (event: CustomEvent) => {
       const { taskId, newStatus } = event.detail;
@@ -188,23 +169,33 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
       );
     };
 
-    // Add event listener
+    // Debounced refresh function to prevent too many API calls
+    const debouncedRefresh = debounce(() => {
+      console.log("[TaskPanel] Debounced refresh triggered");
+      fetchRecentTasks(false);
+    }, 2000); // 2 second debounce
+
+    // Add event listeners
     window.addEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+    window.addEventListener('taskPanelRefresh', debouncedRefresh as EventListener);
 
     // Clean up
     return () => {
       window.removeEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+      window.removeEventListener('taskPanelRefresh', debouncedRefresh as EventListener);
     };
   }, []);
 
-  // Check session storage for task status updates
+  // Add an effect to check session storage on component mount
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     try {
       const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
-
       if (Object.keys(storedUpdates).length > 0) {
         console.log("[TaskPanel] Found stored task updates, applying to current task list");
 
+        // Apply stored updates to current tasks
         setTasks(prevTasks =>
           prevTasks.map(task => {
             if (storedUpdates[task.id]) {
@@ -217,7 +208,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
     } catch (e) {
       console.error("Error applying stored task updates:", e);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   if (!isAuthenticated) {
     return null;

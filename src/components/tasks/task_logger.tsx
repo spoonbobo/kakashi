@@ -20,11 +20,11 @@ interface TaskLoggerProps {
     end_time: string;
     status: string;
     result: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tools_called: any;
+    summarization?: string;
+    tools_called: Record<string, any>;
   };
-  onApprove?: (taskId: string, editedToolCalls: any[]) => void;
-  onDeny?: (taskId: string, editedToolCalls: any[]) => void;
+  onApprove?: (taskId: string, editedToolCalls: Array<Record<string, any>>) => void;
+  onDeny?: (taskId: string, editedToolCalls: Array<Record<string, any>>) => void;
 }
 
 const MotionBox = motion(Box);
@@ -36,36 +36,28 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
   onDeny
 }) => {
   const { isAuthenticated } = useAuth();
-  const [priority, setPriority] = useState("High");
-  const [timeout, setTimeout] = useState("30");
-  const [maxRetries, setMaxRetries] = useState("3");
-  const [toolName, setToolName] = useState("file_search");
-  const [query, setQuery] = useState("user_data.json");
-  const [activeTab, setActiveTab] = useState("details");
-  // New state to track edited tool calls
-  const [editedToolCalls, setEditedToolCalls] = useState<any[]>([]);
-  // Add a state to track task status
+  const [_priority, _setPriority] = useState("High");
+  const [_timeout, _setTimeout] = useState("30");
+  const [_maxRetries, _setMaxRetries] = useState("3");
+  const [_toolName, _setToolName] = useState("file_search");
+  const [_query, _setQuery] = useState("user_data.json");
+  const [_activeTab, setActiveTab] = useState("details");
+  const [editedToolCalls, setEditedToolCalls] = useState<Array<Record<string, any>>>([]);
   const [taskStatus, setTaskStatus] = useState<{ [key: string]: 'approved' | 'denied' | null }>({});
-  // Add a new state for animation
   const [actionAnimation, setActionAnimation] = useState<'none' | 'approve' | 'deny'>('none');
-  // Add local task state to update UI immediately
   const [localTask, setLocalTask] = useState(task);
 
-  // Global task status update function
   const broadcastTaskStatusUpdate = useCallback((taskId: string, newStatus: string) => {
-    // Create a custom event to notify other components
     const taskUpdateEvent = new CustomEvent('taskStatusUpdated', {
       detail: {
         taskId: taskId,
         newStatus: newStatus,
-        timestamp: Date.now() // Add a timestamp for versioning
+        timestamp: Date.now()
       }
     });
 
-    // Dispatch the event globally
     window.dispatchEvent(taskUpdateEvent);
 
-    // Also store in sessionStorage for persistence across navigation
     try {
       const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
       storedUpdates[taskId] = {
@@ -80,49 +72,40 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
     console.log(`[TaskLogger] Broadcasting status update: ${taskId} -> ${newStatus}`);
   }, []);
 
-  // Force reset all internal state when task changes
   useEffect(() => {
-    // Reset all state variables to defaults
-    setPriority("High");
-    setTimeout("30");
-    setMaxRetries("3");
-    setToolName("file_search");
-    setQuery("user_data.json");
+    _setPriority("High");
+    _setTimeout("30");
+    _setMaxRetries("3");
+    _setToolName("file_search");
+    _setQuery("user_data.json");
     setActiveTab("details");
 
-    // Initialize edited tool calls with the original values
     if (task?.tools_called) {
       console.log("task.tools_called", task.tools_called);
-      // Check if tools_called has a nested tools_called array
       if (task.tools_called.tools_called && Array.isArray(task.tools_called.tools_called)) {
         setEditedToolCalls(JSON.parse(JSON.stringify(task.tools_called.tools_called)));
       } else {
-        // Fallback to the original behavior if structure is different
         setEditedToolCalls(JSON.parse(JSON.stringify(task.tools_called)));
       }
     } else {
       setEditedToolCalls([]);
     }
 
-    // Check sessionStorage for any stored status updates for this task
     try {
       if (task?.id) {
         const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
         if (storedUpdates[task.id]) {
           console.log(`[TaskLogger] Found stored status for task ${task.id}: ${storedUpdates[task.id].status}`);
-          // Update localTask with the stored status
           setLocalTask(prev => prev ? { ...prev, status: storedUpdates[task.id].status } : task);
-          return; // Skip the rest of this effect
+          return;
         }
       }
     } catch (e) {
       console.error("Error retrieving task status from sessionStorage:", e);
     }
 
-    // If no stored status was found, just set localTask to the current task
     setLocalTask(task);
 
-    // Force update the Tabs component by directly setting its value
     const tabsElement = document.querySelector('[role="tablist"]');
     if (tabsElement) {
       const detailsTabTrigger = tabsElement.querySelector('[value="details"]');
@@ -130,22 +113,18 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
         (detailsTabTrigger as HTMLElement).click();
       }
     }
-  }, [task]); // Watch the entire task object for changes
+  }, [task]);
 
-  // Handle argument changes
   const handleArgChange = (toolIndex: number, argKey: string, newValue: string) => {
     const updatedToolCalls = [...editedToolCalls];
     try {
-      // Try to parse the value as JSON if it looks like a valid JSON
       if (newValue.trim().startsWith('{') || newValue.trim().startsWith('[')) {
         try {
           updatedToolCalls[toolIndex].args[argKey] = JSON.parse(newValue);
-        } catch (e) {
-          // If JSON parsing fails, store as string
+        } catch (error) {
           updatedToolCalls[toolIndex].args[argKey] = newValue;
         }
       } else {
-        // For non-JSON looking strings, try to convert to numbers if applicable
         const numValue = Number(newValue);
         updatedToolCalls[toolIndex].args[argKey] = !isNaN(numValue) && newValue.trim() !== '' ?
           numValue : newValue;
@@ -156,34 +135,31 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
     }
   };
 
-  // Improved task action handler with guarantees for cross-component updates
-  const handleTaskAction = useCallback((taskObj, action: 'approve' | 'deny') => {
+  const handleTaskAction = useCallback((taskObj: TaskLoggerProps['task'], action: 'approve' | 'deny') => {
     if (!taskObj) return;
 
     console.log(`Task ${action}d:`, taskObj, "with edited tool calls:", editedToolCalls);
     const newStatus = action === 'approve' ? 'running' : 'denied';
 
-    // Update task status in state immediately
     setTaskStatus(prev => ({
       ...prev,
       [taskObj.id]: action === 'approve' ? 'approved' : 'denied'
     }));
 
-    // Update local task status for UI
-    setLocalTask(prev => ({
-      ...prev,
-      status: newStatus
-    }));
+    setLocalTask(prev => {
+      if (!prev) return taskObj;
+      return {
+        ...prev,
+        status: newStatus
+      };
+    });
 
-    // Trigger animation
     setActionAnimation(action);
 
-    // Reset animation after it completes
     setTimeout(() => {
       setActionAnimation('none');
     }, 1500);
 
-    // Store update in sessionStorage immediately for cross-component access
     try {
       const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
       storedUpdates[taskObj.id] = {
@@ -196,40 +172,41 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
       console.error("Error storing task status in sessionStorage:", e);
     }
 
-    // Broadcast the status change to all components with guaranteed delivery
-    // Use setTimeout to ensure event is dispatched after state updates
     setTimeout(() => {
-      // Dispatch status update event
       broadcastTaskStatusUpdate(taskObj.id, newStatus);
 
-      // Force refresh task history - more aggressive approach
       window.dispatchEvent(new CustomEvent('taskHistoryForceRefresh', {
-        detail: { taskId: taskObj.id, status: newStatus }
+        detail: {
+          taskId: taskObj.id,
+          status: newStatus,
+          timestamp: Date.now(),
+          action: action
+        }
       }));
 
-      // Force refresh task panel - more aggressive approach
       window.dispatchEvent(new CustomEvent('taskPanelRefresh', {
-        detail: { taskId: taskObj.id, status: newStatus }
+        detail: {
+          taskId: taskObj.id,
+          status: newStatus,
+          timestamp: Date.now(),
+          action: action
+        }
       }));
 
       console.log(`[TaskLogger] Dispatched refresh events for task ${taskObj.id}`);
-    }, 10); // Small delay to ensure events are processed after state updates
+    }, 10);
 
     if (action === 'approve') {
-      // Show success toast immediately upon clicking
       toast.success(`Task "${taskObj.id}" has been approved!`, {
         className: 'professional-toast',
         progressClassName: 'professional-progress',
         icon: <FaCheck color="#4CAF50" size={24} />,
       });
 
-      // Call the onApprove callback immediately
       onApprove?.(taskObj.id, editedToolCalls);
 
-      // Update task status in database immediately
       updateTaskStatusInDb(taskObj.task_id || taskObj.id, 'approved');
 
-      // Make API call to approve endpoint (but don't wait for response to show toast)
       fetch(`/mcp/api/app/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -243,7 +220,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
         })
         .then(data => {
           console.log("Approval API response:", data);
-          // Success toast is already shown, so no need to show again
         })
         .catch(error => {
           console.error("Error approving task:", error);
@@ -259,15 +235,12 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
         icon: <FaTimes color="#F44336" size={24} />,
       });
 
-      // Call onDeny callback immediately
       onDeny?.(taskObj.id, editedToolCalls);
 
-      // Update task status in database immediately
       updateTaskStatusInDb(taskObj.task_id || taskObj.id, 'denied');
     }
   }, [editedToolCalls, onApprove, onDeny, broadcastTaskStatusUpdate]);
 
-  // Function to update task status in database
   const updateTaskStatusInDb = async (taskId: string, status: 'approved' | 'denied') => {
     try {
       console.log("updateTaskStatusInDb called with taskId:", taskId, "and status:", status);
@@ -304,7 +277,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
 
     return (
       <Flex direction="column" gap={4}>
-        {/* Summarization with more space */}
         {localTask.summarization && (
           <Box width="100%">
             <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Summarization</Text>
@@ -314,7 +286,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
           </Box>
         )}
 
-        {/* Compact date section */}
         <Flex direction="row" wrap="wrap" gap={4}>
           <Box flex="1" minWidth="200px">
             <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Timestamps</Text>
@@ -332,7 +303,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
           </Box>
         </Flex>
 
-        {/* Result section */}
         {localTask.status === 'completed' && (
           <Box width="100%">
             <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Result</Text>
@@ -353,7 +323,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
       overflow="hidden"
       className={actionAnimation !== 'none' ? `task-action-${actionAnimation}` : ''}
     >
-      {/* ToastContainer */}
       <ToastContainer
         position="bottom-right"
         autoClose={4000}
@@ -373,7 +342,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
         }}
       />
 
-      {/* Custom CSS for toast styling */}
       <style jsx global>{`
         .professional-toast {
           border-radius: 8px !important;
@@ -406,7 +374,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
           padding: 4px !important;
         }
         
-        /* Task action animations */
         .task-action-approve {
           animation: pulseGreen 1.5s ease-in-out;
         }
@@ -439,14 +406,12 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
         justifyContent="center"
         mt={-3}
       >
-        {/* Main content as a row with tabs on left and actions on right */}
         <Flex width="100%" height="100%">
-          {/* Left side - Tabs */}
           <Box flex="1" mr={4} height="100%">
             <Tabs.Root
               defaultValue="details"
               style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}
-              onValueChange={(value) => setActiveTab(value)}
+              onValueChange={setActiveTab}
             >
               <Tabs.List mb={4}>
                 {['Details', 'Description', 'Arguments', 'Logs'].map((tab) => (
@@ -552,7 +517,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                       editedToolCalls && editedToolCalls.length > 0 ? (
                         <Flex direction="column" gap={4}>
                           <Box>
-                            {/* <Text fontSize="md" fontWeight="medium" mb={3}>Tool Calls</Text> */}
                             {editedToolCalls.map((tool, toolIndex) => (
                               <Box key={toolIndex} mb={4} p={3} borderWidth="1px" borderRadius="md" borderColor="gray.200">
                                 <Flex justifyContent="space-between" alignItems="center" mb={2}>
@@ -629,11 +593,9 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
             </Tabs.Root>
           </Box>
 
-          {/* Right side - Task Status and Action Buttons - Optimized */}
           <Box width="180px" bg="gray.50" p={4} borderRadius="md" height="fit-content">
             {localTask ? (
               <Flex direction="column" gap={3}>
-                {/* Task Status - Compact - Use localTask instead of task */}
                 <Flex justify="space-between" align="center">
                   <Text fontSize="xs" fontWeight="medium" color="gray.600">STATUS</Text>
                   <Flex
@@ -661,7 +623,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                   </Flex>
                 </Flex>
 
-                {/* Task ID - Simplified Display */}
                 <Box mb={2}>
                   <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>TASK ID</Text>
                   <Text
@@ -671,23 +632,17 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                     wordBreak="break-all"
                     cursor="pointer"
                     onClick={() => {
-                      // Next.js safe way to access clipboard
                       if (typeof window !== 'undefined') {
-                        // Create a temporary textarea element
                         const textArea = document.createElement('textarea');
                         textArea.value = localTask.id;
-                        // Make it invisible
                         textArea.style.position = 'fixed';
                         textArea.style.left = '-999999px';
                         textArea.style.top = '-999999px';
                         document.body.appendChild(textArea);
                         textArea.focus();
                         textArea.select();
-                        // Execute copy command
                         document.execCommand('copy');
-                        // Clean up
                         document.body.removeChild(textArea);
-                        // Show toast
                         toast.info("Task ID copied to clipboard", { autoClose: 2000 });
                       }
                     }}
@@ -697,7 +652,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                   </Text>
                 </Box>
 
-                {/* Action Buttons - Only show for pending tasks */}
                 {localTask.status === 'pending' && (
                   <MotionFlex
                     justify="space-between"
@@ -720,7 +674,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                           scale: [1, 1.05, 1],
                           opacity: [1, 0.9, 1]
                         }}
-                        transition={{ duration: 0.5 }}
+                        transition={{ duration: 0.5, type: 'spring' }}
                       >
                         {taskStatus[localTask.id] === 'approved' ? (
                           <Text display="flex" alignItems="center">
@@ -770,7 +724,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                   </MotionFlex>
                 )}
 
-                {/* If task is not pending, show a message */}
                 {localTask.status !== 'pending' && (
                   <Text fontSize="xs" color="gray.600" fontStyle="italic" textAlign="center" mt={2}>
                     No actions available

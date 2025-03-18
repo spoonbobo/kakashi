@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Box, Text, Badge, Flex } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
+import { getStatusColorProps } from '@/lib/task_status_utils';
 
 interface TaskBoxProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -17,7 +18,8 @@ const MotionText = motion(Text);
 const MotionBadge = motion(Badge);
 const MotionFlex = motion(Flex);
 
-export const TaskBox: React.FC<TaskBoxProps> = ({
+// Memoize the TaskBox component to prevent unnecessary re-renders
+export const TaskBox = memo<TaskBoxProps>(({
     item,
     onClick,
     height = "100px",
@@ -31,18 +33,10 @@ export const TaskBox: React.FC<TaskBoxProps> = ({
         return null;
     }
 
+    // Use the shared status color utility instead of local function
     const getStatusColor = (status: string) => {
-        switch (status?.toLowerCase()) {
-            case 'completed':
-                return 'green';
-            case 'failed':
-                return 'red';
-            case 'in_progress':
-                return 'blue';
-            case 'pending':
-            default:
-                return 'orange';
-        }
+        const colorProps = getStatusColorProps(status);
+        return colorProps.colorScheme;
     };
 
     // Format the task description to be more concise
@@ -247,4 +241,4 @@ export const TaskBox: React.FC<TaskBoxProps> = ({
             )}
         </MotionBox>
     );
-};
+});

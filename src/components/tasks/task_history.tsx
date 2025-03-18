@@ -3,6 +3,7 @@ import { Table, Select, createListCollection } from "@chakra-ui/react";
 import { useAuth } from "@/auth/context";
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
+import { getStatusColorProps, useTaskStatusUpdates } from '@/lib/task_status_utils';
 
 const MotionBox = motion(Box);
 
@@ -134,13 +135,14 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
     };
   }, [isAuthenticated, fetchTasks, statusFilter]);
 
-  // Add event listener for task status updates with immediate handling
+  // Add a more robust task status update listener with debouncing
   useEffect(() => {
+    // Immediate update function for UI responsiveness
     const handleTaskStatusUpdate = (event: CustomEvent) => {
       const { taskId, newStatus } = event.detail;
-      console.log(`Task status update received: ${taskId} -> ${newStatus}`);
+      console.log(`[TaskHistory] Task status update received: ${taskId} -> ${newStatus}`);
 
-      // Update the task in the local state
+      // Immediately update task in the list for responsive UI
       setTasks(prevTasks =>
         prevTasks.map(task =>
           task.id === taskId ? { ...task, status: newStatus } : task
@@ -148,30 +150,74 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
       );
     };
 
-    // Add event listener
+    // Debounced refresh function to prevent too many API calls
+    const debouncedRefresh = debounce(() => {
+      console.log("[TaskHistory] Debounced refresh triggered");
+      fetchTasks(statusFilter);
+    }, 2000); // 2 second debounce
+
+    // Handle force refresh events from TaskLogger
+    const handleForceRefresh = (event: CustomEvent) => {
+      const { taskId, status } = event.detail || {};
+      console.log(`[TaskHistory] Force refresh event received for task ${taskId} with status ${status}`);
+
+      // First update the specific task immediately
+      if (taskId) {
+        setTasks(prevTasks =>
+          prevTasks.map(task =>
+            task.id === taskId ? { ...task, status } : task
+          )
+        );
+      }
+
+      // Then schedule a full refresh after a short delay
+      setTimeout(() => debouncedRefresh(), 500);
+    };
+
+    // Add event listeners
     window.addEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+    window.addEventListener('taskHistoryForceRefresh', handleForceRefresh as EventListener);
 
     // Clean up
     return () => {
       window.removeEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+      window.removeEventListener('taskHistoryForceRefresh', handleForceRefresh as EventListener);
     };
-  }, []);
+  }, [statusFilter]);
 
-  // Add listener for forced refreshes from TaskLogger with immediate refresh
+  // Helper function for debouncing
+  const debounce = (func: Function, wait: number) => {
+    let timeout: NodeJS.Timeout | null = null;
+
+    return (...args: any[]) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
+
+  // Add a function to check session storage on component mount
   useEffect(() => {
-    const handleForceRefresh = () => {
-      console.log("Task history received force refresh event");
-      fetchTasks(statusFilter);
-    };
+    if (!isAuthenticated) return;
 
-    // Add event listener
-    window.addEventListener('taskHistoryForceRefresh', handleForceRefresh);
+    try {
+      const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
+      if (Object.keys(storedUpdates).length > 0) {
+        console.log("[TaskHistory] Found stored task updates, applying to current task list");
 
-    // Clean up
-    return () => {
-      window.removeEventListener('taskHistoryForceRefresh', handleForceRefresh);
-    };
-  }, [fetchTasks, statusFilter]);
+        // Apply stored updates to current tasks
+        setTasks(prevTasks =>
+          prevTasks.map(task => {
+            if (storedUpdates[task.id]) {
+              return { ...task, status: storedUpdates[task.id].status };
+            }
+            return task;
+          })
+        );
+      }
+    } catch (e) {
+      console.error("Error applying stored task updates:", e);
+    }
+  }, [isAuthenticated]);
 
   if (!isAuthenticated) {
     return null;
@@ -183,26 +229,24 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
   };
 
   const getStatusBadge = (status: string) => {
-    let colorScheme = 'gray';
+    const colorProps = getStatusColorProps(status);
 
-    switch (status.toLowerCase()) {
-      case 'completed':
-      case 'successful':
-        colorScheme = 'green';
-        break;
-      case 'pending':
-        colorScheme = 'yellow';
-        break;
-      case 'denied':
-      case 'failed':
-        colorScheme = 'red';
-        break;
-      case 'running':
-        colorScheme = 'blue';
-        break;
-    }
-
-    return <Badge colorScheme={colorScheme}>{status}</Badge>;
+    return (
+      <Badge
+        colorScheme={colorProps.colorScheme}
+        variant="subtle"
+        px={2}
+        py={1}
+        borderRadius="md"
+        textTransform="uppercase"
+        fontSize="xs"
+        boxShadow="none"
+        bg={colorProps.bg}
+        color={colorProps.color}
+      >
+        {status}
+      </Badge>
+    );
   };
 
   const handleStatusChange = (values: string[]) => {
@@ -346,8 +390,8 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
                 {tasks.map((task) => (
                   <Table.Row
                     key={task.id}
-                    _hover={{ bg: "gray.50", cursor: "pointer" }}
-                    transition="background-color 0.2s"
+                    cursor="pointer"
+                    _hover={{ bg: "gray.50" }}
                     onClick={() => handleRowClick(task)}
                   >
                     <Table.Cell fontWeight="medium" fontSize={{ base: "xs", md: "sm" }}>{task.id}</Table.Cell>
@@ -358,7 +402,9 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
                       </Box>
                     </Table.Cell>
                     <Table.Cell fontSize={{ base: "xs", md: "sm" }} display={{ base: "none", md: "table-cell" }}>{formatDate(task.created_at)}</Table.Cell>
-                    <Table.Cell textAlign="center">{getStatusBadge(task.status)}</Table.Cell>
+                    <Table.Cell textAlign="center" padding={2}>
+                      {getStatusBadge(task.status)}
+                    </Table.Cell>
                   </Table.Row>
                 ))}
               </Table.Body>
@@ -406,25 +452,29 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
             </Flex>
 
             <Flex gap={1} alignItems="center">
-              <Box as="button"
-                disabled={currentPage === 1}
+              <Box
+                as="button"
+                isDisabled={currentPage === 1}
                 onClick={() => handlePageChange(1)}
                 px={2} py={1}
                 borderRadius="md"
                 bg={currentPage === 1 ? "gray.100" : "gray.200"}
                 color={currentPage === 1 ? "gray.400" : "gray.700"}
                 _hover={{ bg: currentPage === 1 ? "gray.100" : "gray.300" }}
+                _disabled={{ opacity: 0.5, cursor: "not-allowed" }}
               >
                 «
               </Box>
-              <Box as="button"
-                disabled={currentPage === 1}
+              <Box
+                as="button"
+                isDisabled={currentPage === 1}
                 onClick={() => handlePageChange(currentPage - 1)}
                 px={2} py={1}
                 borderRadius="md"
                 bg={currentPage === 1 ? "gray.100" : "gray.200"}
                 color={currentPage === 1 ? "gray.400" : "gray.700"}
                 _hover={{ bg: currentPage === 1 ? "gray.100" : "gray.300" }}
+                _disabled={{ opacity: 0.5, cursor: "not-allowed" }}
               >
                 ‹
               </Box>
@@ -433,25 +483,29 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
                 Page {currentPage} of {totalPages || 1}
               </Text>
 
-              <Box as="button"
-                disabled={currentPage === totalPages || totalPages === 0}
+              <Box
+                as="button"
+                isDisabled={currentPage === totalPages || totalPages === 0}
                 onClick={() => handlePageChange(currentPage + 1)}
                 px={2} py={1}
                 borderRadius="md"
                 bg={currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.200"}
                 color={currentPage === totalPages || totalPages === 0 ? "gray.400" : "gray.700"}
                 _hover={{ bg: currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.300" }}
+                _disabled={{ opacity: 0.5, cursor: "not-allowed" }}
               >
                 ›
               </Box>
-              <Box as="button"
-                disabled={currentPage === totalPages || totalPages === 0}
+              <Box
+                as="button"
+                isDisabled={currentPage === totalPages || totalPages === 0}
                 onClick={() => handlePageChange(totalPages)}
                 px={2} py={1}
                 borderRadius="md"
                 bg={currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.200"}
                 color={currentPage === totalPages || totalPages === 0 ? "gray.400" : "gray.700"}
                 _hover={{ bg: currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.300" }}
+                _disabled={{ opacity: 0.5, cursor: "not-allowed" }}
               >
                 »
               </Box>
