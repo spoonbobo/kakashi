@@ -1,5 +1,6 @@
 import dotenv
 from contextlib import AsyncExitStack
+from typing import List
 import os
 
 dotenv.load_dotenv()
@@ -9,7 +10,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.types import Tool as mcp_tool
 from mcp.client.stdio import stdio_client
 
-from schemas.mcp import MCPAccess, MCPResponse
+from schemas.mcp import MCPAccess, MCPResponse, MCPToolCall
 from service.bypasser import Bypasser
 
 class MCPClientManager:
@@ -82,11 +83,6 @@ class MCPClientManager:
             for msg in messages
         ]
 
-        conversions.append({
-            "role": "user",
-            "content": query,
-        })
-
         tools = await server.list_tools()
         tools = tools.tools
         logger.info(f"Tools: {tools}")
@@ -97,38 +93,76 @@ class MCPClientManager:
 
         llm_response = self.ollama_client.chat(
             model=self.ollama_model,
-            messages=conversions,
+            messages=conversions + [{"role": "user", "content": query}],
             tools=ollama_tools,
         )
-
+        
         tool_calls = llm_response.message.tool_calls
         if tool_calls is None:
                 tool_calls = []
         tools_called = [
             {
-                "name": tool_call.function.name,
-                "args": tool_call.function.arguments
+                "tool_name": tool_call.function.name,
+                "args": tool_call.function.arguments,
+                "mcp_server": byp_mcp_server,
+                "room_id": access.room_id,
             }
             for tool_call in tool_calls
         ]
+        
+        summarize_query = {
+            "role": "user",
+            "content": f"""
+            Give a brief goal statement of how you (agent) will use the tools {tools_called} to achieve the goal of the query {query}.
+            (description: {descriptions})
+            
+            Example response template:
+            "Use... to .... "
+            """
+        }
+        
+        summarization = self.ollama_client.chat(
+            model=self.ollama_model,
+            messages=conversions + [summarize_query],
+        )
+
         logger.info(f"Tools called: {tools_called}")
         response = MCPResponse(
             sender=access.mentioned_agent,
             text=",".join(descriptions),
-            summarization="TODO",
-            task_type=byp_mcp_server,
+            summarization=summarization.message.content,
             is_tool_call=True,
-            tools_called=tools_called
+            tools_called=[MCPToolCall(**tool_call) for tool_call in tools_called]
         )
         return response
 
     async def call_tool(
         self, 
-        tool_name: str, 
-        tool_args: dict,
-        server: str
-    ):
-        pass
+        approval: List[MCPToolCall]
+    ) -> MCPResponse:
+        results = []
+        for tool_call in approval:
+            session = self.servers[tool_call.mcp_server]
+            tool_response = await session.call_tool(tool_call.tool_name, tool_call.args)
+            results.append(tool_response.content[0].text)
+        
+        logger.info(f"Reuslts: {results}")
+
+        query = {
+            "role": "user",
+            "content": f"Summarize this piece of text: {results}. Keep your response concise and to the point."
+        }
+        
+        summarization = self.ollama_client.chat(
+            model=self.ollama_model,
+            messages=[query],
+        )
+
+        return MCPResponse(
+            sender="agent",
+            text=summarization.message.content,
+            is_tool_call=False,
+        )
 
     async def cleanup(self):
         for server in self.servers:

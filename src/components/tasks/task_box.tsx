@@ -8,6 +8,8 @@ interface TaskBoxProps {
     onClick: () => void;
     height?: string;
     isNew?: boolean;
+    forceTimeUnderStatus?: boolean;
+    preventTextTrimming?: boolean;
 }
 
 const MotionBox = motion(Box);
@@ -19,7 +21,9 @@ export const TaskBox: React.FC<TaskBoxProps> = ({
     item,
     onClick,
     height = "100px",
-    isNew = false
+    isNew = false,
+    forceTimeUnderStatus = false,
+    preventTextTrimming = false
 }) => {
     // Validate task data
     if (!item) {
@@ -84,6 +88,18 @@ export const TaskBox: React.FC<TaskBoxProps> = ({
         }
     };
 
+    // Improved summarization trimming with consistent ellipsis
+    const trimSummarization = (text: string) => {
+        if (!text) return '';
+
+        const maxLength = preventTextTrimming ? 120 : 80;
+
+        if (text.length > maxLength) {
+            return text.substring(0, maxLength - 3) + '...';
+        }
+        return text;
+    };
+
     return (
         <MotionBox
             p={2.5}
@@ -92,9 +108,9 @@ export const TaskBox: React.FC<TaskBoxProps> = ({
             boxShadow="sm"
             cursor="pointer"
             onClick={onClick}
-            height={height}
-            minHeight="90px"
-            maxHeight="110px"
+            height="auto"
+            minHeight={preventTextTrimming ? "100px" : "80px"}
+            maxHeight={preventTextTrimming ? "140px" : "110px"}
             overflow="hidden"
             display="flex"
             flexDirection="column"
@@ -104,57 +120,131 @@ export const TaskBox: React.FC<TaskBoxProps> = ({
             initial="hidden"
             animate="visible"
             variants={containerVariants}
+            backgroundColor={isNew ? "blue.50" : "white"}
+            transition="background-color 0.5s ease"
         >
-            <MotionFlex
-                justify="space-between"
-                align="center"
-                mb={1.5}
-            >
-                <MotionText
-                    fontWeight="bold"
-                    maxWidth="70%"
-                    fontSize="sm"
-                >
-                    {item.task_id}
-                </MotionText>
-                <MotionBadge
-                    colorScheme={getStatusColor(item.status)}
-                    fontSize="xs"
-                >
-                    {item.status}
-                </MotionBadge>
-            </MotionFlex>
+            {forceTimeUnderStatus ? (
+                // Layout with time under status
+                <>
+                    <MotionFlex
+                        justify="space-between"
+                        align="flex-start"
+                        mb={1.5}
+                        gap={2}
+                    >
+                        <MotionText
+                            fontWeight="bold"
+                            fontSize="sm"
+                            flex="1"
+                            noOfLines={2}
+                            lineHeight="1.3"
+                            isTruncated={false} // Disable default truncation
+                            css={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: '2',
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                wordBreak: 'break-word'
+                            }}
+                        >
+                            {trimSummarization(item.summarization)}
+                        </MotionText>
+                        <Flex
+                            direction="column"
+                            alignItems="flex-end"
+                            flexShrink={0}
+                        >
+                            <MotionBadge
+                                colorScheme={getStatusColor(item.status)}
+                                fontSize="xs"
+                                flexShrink={0}
+                                mb={1}
+                            >
+                                {item.status}
+                            </MotionBadge>
+                            <MotionText
+                                fontSize="2xs"
+                                color="gray.500"
+                                textAlign="right"
+                                whiteSpace="nowrap"
+                            >
+                                {formatTime(item.created_at)}
+                            </MotionText>
+                        </Flex>
+                    </MotionFlex>
 
-            <MotionFlex
-                justify="space-between"
-                align="center"
-                mb={1}
-            >
-                <MotionText
-                    fontSize="xs"
-                    color="gray.600"
-                    maxWidth="70%"
-                >
-                    {item.summarization}
-                </MotionText>
-                <MotionText
-                    fontSize="2xs"
-                    color="gray.500"
-                >
-                    {formatTime(item.created_at)}
-                </MotionText>
-            </MotionFlex>
+                    <MotionText
+                        fontSize="xs"
+                        color="gray.600"
+                        noOfLines={1}
+                        mt="auto"
+                        isTruncated
+                        title={item.task_id} // Show full task ID on hover
+                    >
+                        {item.task_id}
+                    </MotionText>
+                </>
+            ) : (
+                // Original layout
+                <>
+                    <MotionFlex
+                        justify="space-between"
+                        align="flex-start"
+                        mb={1.5}
+                        gap={2}
+                    >
+                        <MotionText
+                            fontWeight="bold"
+                            fontSize="sm"
+                            flex="1"
+                            noOfLines={2}
+                            css={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: '2',
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                wordBreak: 'break-word'
+                            }}
+                        >
+                            {trimSummarization(item.summarization)}
+                        </MotionText>
+                        <MotionBadge
+                            colorScheme={getStatusColor(item.status)}
+                            fontSize="xs"
+                            flexShrink={0}
+                        >
+                            {item.status}
+                        </MotionBadge>
+                    </MotionFlex>
 
-            <MotionText
-                fontSize="xs"
-                flex="1"
-                overflow="hidden"
-                textOverflow="ellipsis"
-                lineHeight="1.3"
-                mt={0.5}
-            >
-                {formatDescription(item.description)}
-            </MotionText>
+                    <MotionFlex
+                        justify="space-between"
+                        align="center"
+                        mb={1}
+                    >
+                        <MotionText
+                            fontSize="xs"
+                            color="gray.600"
+                            maxWidth="50%"
+                            isTruncated
+                            title={item.task_id} // Show full task ID on hover
+                        >
+                            {item.task_id}
+                        </MotionText>
+                        <MotionText
+                            fontSize="2xs"
+                            color="gray.500"
+                            flexShrink={0}
+                            ml={2}
+                            whiteSpace="nowrap"
+                        >
+                            {formatTime(item.created_at)}
+                        </MotionText>
+                    </MotionFlex>
+                </>
+            )}
         </MotionBox>
     );
 };

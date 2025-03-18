@@ -19,7 +19,6 @@ interface ChatMessage {
   timestamp: Date;
   username?: string;
   task_id?: string;
-  task_type: string;
   is_tool_call: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools_called: any[];
@@ -87,7 +86,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
     const user = socket.data.user;
 
     if (!roomId && !isAgent) {
-      roomId = await createRoomInDatabase();
+      roomId = await createRoom();
       rooms.set(roomId, new Set());
       messageHistory.set(roomId, []);
       userConnections.set(roomId, new Map());
@@ -139,13 +138,11 @@ export const setupChatServer = (httpServer: HttpServer) => {
         try {
           // Assign task_id to both message and newMessage
           const taskId = newMessage.id;
-          const taskType = message.task_type;
           // const taskName = message.summarization;
           const toolsCalled = message.tools_called;
 
           console.log("toolsCalled", toolsCalled);
           message.task_id = taskId;
-          message.task_type = taskType;
           newMessage.task_id = taskId;
                     
           // Create task object with proper sender/executor identification
@@ -161,12 +158,11 @@ export const setupChatServer = (httpServer: HttpServer) => {
           
           // Store task in database
           await createTask({
-            summarization: "task summarization",
+            summarization: message.summarization,
             role: message.sender || user.username,
             description: message.text,
             task_id: taskId,
             room_id: roomId,
-            task_type: taskType,
             tools_called: toolsCalled,
           });
           
@@ -232,7 +228,7 @@ const httpServer = app.listen(3001, () => {
 setupChatServer(httpServer);
 
 // Add this helper function
-const createRoomInDatabase = async (): Promise<string> => {
+const createRoom = async (): Promise<string> => {
   console.log(process.env.CLIENT_URL);
   try {
     const response = await fetch(`${process.env.CLIENT_URL}/api/chat/create_room`, {
@@ -261,9 +257,9 @@ const createTask = async (taskData: {
   description: string;
   task_id: string;
   room_id: string;
-  task_type: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools_called: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }): Promise<any> => {
   try {
     console.log("taskData", taskData);

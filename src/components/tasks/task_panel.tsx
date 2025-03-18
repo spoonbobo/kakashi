@@ -15,7 +15,7 @@ interface AgentTaskPanelProps {
 const MotionBox = motion.create(Box);
 
 const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
-  title = "Agent Dialog",
+  title = "Recent Tasks",
   onTaskSelect
 }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -145,6 +145,80 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
     fetchRecentTasks(true);
   };
 
+  // Listen for refresh events from task logger
+  useEffect(() => {
+    const handleRefreshEvent = (event) => {
+      console.log("Task panel received refresh event", event?.detail);
+
+      // If we have a specific task in the event detail, update just that task
+      if (event?.detail?.taskId) {
+        setTasks(prevTasks =>
+          prevTasks.map(task =>
+            task.id === event.detail.taskId
+              ? { ...task, status: event.detail.status }
+              : task
+          )
+        );
+      }
+
+      // Also do a full refresh to ensure everything is up to date
+      fetchRecentTasks(true);
+    };
+
+    // Add event listener
+    window.addEventListener('taskPanelRefresh', handleRefreshEvent);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('taskPanelRefresh', handleRefreshEvent);
+    };
+  }, []);
+
+  // More aggressive status update listener
+  useEffect(() => {
+    const handleTaskStatusUpdate = (event: CustomEvent) => {
+      const { taskId, newStatus } = event.detail;
+      console.log(`[TaskPanel] Task status update received: ${taskId} -> ${newStatus}`);
+
+      // Immediately update task in the list
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === taskId ? { ...task, status: newStatus } : task
+        )
+      );
+    };
+
+    // Add event listener
+    window.addEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+    };
+  }, []);
+
+  // Check session storage for task status updates
+  useEffect(() => {
+    try {
+      const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
+
+      if (Object.keys(storedUpdates).length > 0) {
+        console.log("[TaskPanel] Found stored task updates, applying to current task list");
+
+        setTasks(prevTasks =>
+          prevTasks.map(task => {
+            if (storedUpdates[task.id]) {
+              return { ...task, status: storedUpdates[task.id].status };
+            }
+            return task;
+          })
+        );
+      }
+    } catch (e) {
+      console.error("Error applying stored task updates:", e);
+    }
+  }, []);
+
   if (!isAuthenticated) {
     return null;
   }
@@ -188,6 +262,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
         height="calc(100% - 70px)"
         position="relative"
         overflowY="auto"
+        spacing={3}
         css={{
           '&::-webkit-scrollbar': {
             width: '4px',
@@ -218,6 +293,8 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
               item={item}
               onClick={() => onTaskSelect(item)}
               isNew={newTaskIds.has(item.id)}
+              forceTimeUnderStatus={true}
+              preventTextTrimming={true}
             />
           ))}
         </AnimatePresence>

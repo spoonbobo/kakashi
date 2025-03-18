@@ -25,27 +25,13 @@ class MCPAccess(BaseModel):
 class AppClient:
     """Client for connecting to chat rooms and sending messages."""
     
-    def __init__(self, access: MCPAccess):
-        """
-        Initialize the AppClient with access details.
-        
-        Args:
-            access: MCPAccess object containing room_id and other connection details
-        """
+    def __init__(self, room_id: str, token: str):
         self.socket_url = os.getenv("SOCKET_URL", "")
-        client_url = os.getenv("CLIENT_URL", "")
-        self.room_id = access.room_id
+        self.token = token
+        self.room_id = room_id
         self.is_agent = True
         
         # Authenticate and get token
-        response = requests.post(
-            f"{client_url}/api/auth",
-            json={
-                "username": os.getenv("AGENTUSER"),
-                "password": os.getenv("AGENTPASSWORD"),
-            },
-        )
-        self.token = response.json()["token"]
         self.auth = {
             "token": self.token,
             "roomId": self.room_id,

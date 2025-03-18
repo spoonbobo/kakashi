@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, Flex, Input, Tabs, IconButton, Icon } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/auth/context';
@@ -44,6 +44,41 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
   const [activeTab, setActiveTab] = useState("details");
   // New state to track edited tool calls
   const [editedToolCalls, setEditedToolCalls] = useState<any[]>([]);
+  // Add a state to track task status
+  const [taskStatus, setTaskStatus] = useState<{ [key: string]: 'approved' | 'denied' | null }>({});
+  // Add a new state for animation
+  const [actionAnimation, setActionAnimation] = useState<'none' | 'approve' | 'deny'>('none');
+  // Add local task state to update UI immediately
+  const [localTask, setLocalTask] = useState(task);
+
+  // Global task status update function
+  const broadcastTaskStatusUpdate = useCallback((taskId: string, newStatus: string) => {
+    // Create a custom event to notify other components
+    const taskUpdateEvent = new CustomEvent('taskStatusUpdated', {
+      detail: {
+        taskId: taskId,
+        newStatus: newStatus,
+        timestamp: Date.now() // Add a timestamp for versioning
+      }
+    });
+
+    // Dispatch the event globally
+    window.dispatchEvent(taskUpdateEvent);
+
+    // Also store in sessionStorage for persistence across navigation
+    try {
+      const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
+      storedUpdates[taskId] = {
+        status: newStatus,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem('taskStatusUpdates', JSON.stringify(storedUpdates));
+    } catch (e) {
+      console.error("Error storing task status in sessionStorage:", e);
+    }
+
+    console.log(`[TaskLogger] Broadcasting status update: ${taskId} -> ${newStatus}`);
+  }, []);
 
   // Force reset all internal state when task changes
   useEffect(() => {
@@ -57,10 +92,35 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
 
     // Initialize edited tool calls with the original values
     if (task?.tools_called) {
-      setEditedToolCalls(JSON.parse(JSON.stringify(task.tools_called)));
+      console.log("task.tools_called", task.tools_called);
+      // Check if tools_called has a nested tools_called array
+      if (task.tools_called.tools_called && Array.isArray(task.tools_called.tools_called)) {
+        setEditedToolCalls(JSON.parse(JSON.stringify(task.tools_called.tools_called)));
+      } else {
+        // Fallback to the original behavior if structure is different
+        setEditedToolCalls(JSON.parse(JSON.stringify(task.tools_called)));
+      }
     } else {
       setEditedToolCalls([]);
     }
+
+    // Check sessionStorage for any stored status updates for this task
+    try {
+      if (task?.id) {
+        const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
+        if (storedUpdates[task.id]) {
+          console.log(`[TaskLogger] Found stored status for task ${task.id}: ${storedUpdates[task.id].status}`);
+          // Update localTask with the stored status
+          setLocalTask(prev => prev ? { ...prev, status: storedUpdates[task.id].status } : task);
+          return; // Skip the rest of this effect
+        }
+      }
+    } catch (e) {
+      console.error("Error retrieving task status from sessionStorage:", e);
+    }
+
+    // If no stored status was found, just set localTask to the current task
+    setLocalTask(task);
 
     // Force update the Tabs component by directly setting its value
     const tabsElement = document.querySelector('[role="tablist"]');
@@ -96,36 +156,145 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
     }
   };
 
-  // Updated approval function to include edited tool calls
-  const handleApproveTask = (task) => {
-    console.log("Task approved:", task, "with edited tool calls:", editedToolCalls);
-    toast.success(`Task "${task.id}" has been approved!`, {
-      className: 'professional-toast',
-      progressClassName: 'professional-progress',
-      icon: <FaCheck color="#4CAF50" size={24} />,
-      bodyClassName: 'professional-toast-body'
-    });
-    // Pass both task ID and edited tool calls to the onApprove handler
-    onApprove?.(task.id, editedToolCalls);
-  };
+  // Improved task action handler with guarantees for cross-component updates
+  const handleTaskAction = useCallback((taskObj, action: 'approve' | 'deny') => {
+    if (!taskObj) return;
 
-  // Updated deny function to include edited tool calls
-  const handleDenyTask = (task) => {
-    console.log("Task denied:", task, "with edited tool calls:", editedToolCalls);
-    toast.error(`Task "${task.id}" has been denied!`, {
-      className: 'professional-toast',
-      progressClassName: 'professional-progress',
-      icon: <FaTimes color="#F44336" size={24} />,
-      bodyClassName: 'professional-toast-body'
-    });
-    // Pass both task ID and edited tool calls to the onDeny handler
-    onDeny?.(task.id, editedToolCalls);
+    console.log(`Task ${action}d:`, taskObj, "with edited tool calls:", editedToolCalls);
+    const newStatus = action === 'approve' ? 'running' : 'denied';
+
+    // Update task status in state immediately
+    setTaskStatus(prev => ({
+      ...prev,
+      [taskObj.id]: action === 'approve' ? 'approved' : 'denied'
+    }));
+
+    // Update local task status for UI
+    setLocalTask(prev => ({
+      ...prev,
+      status: newStatus
+    }));
+
+    // Trigger animation
+    setActionAnimation(action);
+
+    // Reset animation after it completes
+    setTimeout(() => {
+      setActionAnimation('none');
+    }, 1500);
+
+    // Store update in sessionStorage immediately for cross-component access
+    try {
+      const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
+      storedUpdates[taskObj.id] = {
+        status: newStatus,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem('taskStatusUpdates', JSON.stringify(storedUpdates));
+      console.log(`[TaskLogger] Stored task ${taskObj.id} status as ${newStatus} in sessionStorage`);
+    } catch (e) {
+      console.error("Error storing task status in sessionStorage:", e);
+    }
+
+    // Broadcast the status change to all components with guaranteed delivery
+    // Use setTimeout to ensure event is dispatched after state updates
+    setTimeout(() => {
+      // Dispatch status update event
+      broadcastTaskStatusUpdate(taskObj.id, newStatus);
+
+      // Force refresh task history - more aggressive approach
+      window.dispatchEvent(new CustomEvent('taskHistoryForceRefresh', {
+        detail: { taskId: taskObj.id, status: newStatus }
+      }));
+
+      // Force refresh task panel - more aggressive approach
+      window.dispatchEvent(new CustomEvent('taskPanelRefresh', {
+        detail: { taskId: taskObj.id, status: newStatus }
+      }));
+
+      console.log(`[TaskLogger] Dispatched refresh events for task ${taskObj.id}`);
+    }, 10); // Small delay to ensure events are processed after state updates
+
+    if (action === 'approve') {
+      // Show success toast immediately upon clicking
+      toast.success(`Task "${taskObj.id}" has been approved!`, {
+        className: 'professional-toast',
+        progressClassName: 'professional-progress',
+        icon: <FaCheck color="#4CAF50" size={24} />,
+      });
+
+      // Call the onApprove callback immediately
+      onApprove?.(taskObj.id, editedToolCalls);
+
+      // Update task status in database immediately
+      updateTaskStatusInDb(taskObj.task_id || taskObj.id, 'approved');
+
+      // Make API call to approve endpoint (but don't wait for response to show toast)
+      fetch(`/mcp/api/app/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editedToolCalls)
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log("Approval API response:", data);
+          // Success toast is already shown, so no need to show again
+        })
+        .catch(error => {
+          console.error("Error approving task:", error);
+          toast.error(`Error approving task: ${error.message}`, {
+            className: 'professional-toast',
+            progressClassName: 'professional-progress',
+          });
+        });
+    } else {
+      toast.error(`Task "${taskObj.id}" has been denied!`, {
+        className: 'professional-toast',
+        progressClassName: 'professional-progress',
+        icon: <FaTimes color="#F44336" size={24} />,
+      });
+
+      // Call onDeny callback immediately
+      onDeny?.(taskObj.id, editedToolCalls);
+
+      // Update task status in database immediately
+      updateTaskStatusInDb(taskObj.task_id || taskObj.id, 'denied');
+    }
+  }, [editedToolCalls, onApprove, onDeny, broadcastTaskStatusUpdate]);
+
+  // Function to update task status in database
+  const updateTaskStatusInDb = async (taskId: string, status: 'approved' | 'denied') => {
+    try {
+      console.log("updateTaskStatusInDb called with taskId:", taskId, "and status:", status);
+      const response = await fetch('/api/task/update_task_status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          status,
+          startTime: status === 'approved' ? new Date().toISOString() : null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update task status: ${response.statusText}`);
+      }
+
+      console.log(`Task ${taskId} status updated to ${status} in database`);
+    } catch (error) {
+      console.error("Error updating task status in database:", error);
+    }
   };
 
   if (!isAuthenticated) return null;
 
   const renderTaskMetadata = () => {
-    if (!task) {
+    if (!localTask) {
       return (
         <Box p={5} textAlign="center" m={4}>
           <Text color="gray.600" fontSize={{ base: "md", md: "lg" }}>No task selected</Text>
@@ -134,23 +303,41 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
     }
 
     return (
-      <Flex direction="row" wrap="wrap" gap={4}>
-        {[
-          { label: 'Summarization', value: task.summarization },
-          { label: 'Created', value: new Date(task.created_at).toLocaleString() },
-          { label: 'Started', value: task.start_time ? new Date(task.start_time).toLocaleString() : '-' },
-          { label: 'Completed', value: task.end_time ? new Date(task.end_time).toLocaleString() : '-' }
-        ].map((item, index) => (
-          <Box flex="1" minWidth="150px" key={index}>
-            <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>{item.label}</Text>
-            <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium">{item.value}</Text>
+      <Flex direction="column" gap={4}>
+        {/* Summarization with more space */}
+        {localTask.summarization && (
+          <Box width="100%">
+            <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Summarization</Text>
+            <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium" whiteSpace="pre-wrap">
+              {localTask.summarization}
+            </Text>
           </Box>
-        ))}
-        {task.status === 'completed' && (
-          <Box width="100%" mt={2}>
+        )}
+
+        {/* Compact date section */}
+        <Flex direction="row" wrap="wrap" gap={4}>
+          <Box flex="1" minWidth="200px">
+            <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Timestamps</Text>
+            <Flex direction="column" gap={1}>
+              <Text fontSize={{ base: "sm", md: "md" }}>
+                <Text as="span" fontWeight="medium">Created:</Text> {new Date(localTask.created_at).toLocaleString()}
+              </Text>
+              <Text fontSize={{ base: "sm", md: "md" }}>
+                <Text as="span" fontWeight="medium">Started:</Text> {localTask.start_time ? new Date(localTask.start_time).toLocaleString() : '-'}
+              </Text>
+              <Text fontSize={{ base: "sm", md: "md" }}>
+                <Text as="span" fontWeight="medium">Completed:</Text> {localTask.end_time ? new Date(localTask.end_time).toLocaleString() : '-'}
+              </Text>
+            </Flex>
+          </Box>
+        </Flex>
+
+        {/* Result section */}
+        {localTask.status === 'completed' && (
+          <Box width="100%">
             <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Result</Text>
             <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium">
-              {task.result || 'No result available'}
+              {localTask.result || 'No result available'}
             </Text>
           </Box>
         )}
@@ -159,7 +346,13 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
   };
 
   return (
-    <Box height="100%" width="100%" position="relative" overflow="hidden">
+    <Box
+      height="100%"
+      width="100%"
+      position="relative"
+      overflow="hidden"
+      className={actionAnimation !== 'none' ? `task-action-${actionAnimation}` : ''}
+    >
       {/* ToastContainer */}
       <ToastContainer
         position="bottom-right"
@@ -211,6 +404,27 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
         .Toastify__close-button {
           opacity: 0.7 !important;
           padding: 4px !important;
+        }
+        
+        /* Task action animations */
+        .task-action-approve {
+          animation: pulseGreen 1.5s ease-in-out;
+        }
+        
+        .task-action-deny {
+          animation: pulseRed 1.5s ease-in-out;
+        }
+        
+        @keyframes pulseGreen {
+          0% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0); }
+          20% { box-shadow: 0 0 0 15px rgba(72, 187, 120, 0.2); }
+          100% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0); }
+        }
+        
+        @keyframes pulseRed {
+          0% { box-shadow: 0 0 0 0 rgba(245, 101, 101, 0); }
+          20% { box-shadow: 0 0 0 15px rgba(245, 101, 101, 0.2); }
+          100% { box-shadow: 0 0 0 0 rgba(245, 101, 101, 0); }
         }
       `}</style>
 
@@ -302,9 +516,9 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                       delay: 0.1
                     }}
                   >
-                    {task ? (
+                    {localTask ? (
                       <Text fontSize={{ base: "sm", md: "md" }} whiteSpace="pre-wrap" color="gray.700">
-                        {task.description}
+                        {localTask.description}
                       </Text>
                     ) : (
                       <Text color="gray.600">No task selected</Text>
@@ -334,16 +548,23 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                       delay: 0.1
                     }}
                   >
-                    {task ? (
+                    {localTask ? (
                       editedToolCalls && editedToolCalls.length > 0 ? (
                         <Flex direction="column" gap={4}>
                           <Box>
                             {/* <Text fontSize="md" fontWeight="medium" mb={3}>Tool Calls</Text> */}
                             {editedToolCalls.map((tool, toolIndex) => (
                               <Box key={toolIndex} mb={4} p={3} borderWidth="1px" borderRadius="md" borderColor="gray.200">
-                                <Text fontSize="sm" fontWeight="semibold" color="blue.600" mb={2}>
-                                  {tool.name}
-                                </Text>
+                                <Flex justifyContent="space-between" alignItems="center" mb={2}>
+                                  <Text fontSize="sm" fontWeight="semibold" color="blue.600">
+                                    {tool.tool_name || tool.name}
+                                  </Text>
+                                  {tool.mcp_server && (
+                                    <Text fontSize="xs" color="gray.500" fontStyle="italic">
+                                      Server: {tool.mcp_server}
+                                    </Text>
+                                  )}
+                                </Flex>
                                 {tool.args && Object.keys(tool.args).length > 0 ? (
                                   <Box ml={2}>
                                     <Text fontSize="xs" color="gray.600" mb={1}>Arguments:</Text>
@@ -356,7 +577,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                                           value={typeof value === 'object' ? JSON.stringify(value) : String(value)}
                                           onChange={(e) => handleArgChange(toolIndex, key, e.target.value)}
                                           fontFamily="mono"
-                                          disabled={task.status !== 'pending'}
+                                          disabled={localTask.status !== 'pending'}
                                         />
                                       </Flex>
                                     ))}
@@ -400,7 +621,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                     }}
                   >
                     <Text fontSize={{ base: "sm", md: "md" }} color="gray.600">
-                      {task ? 'Task execution logs will appear here when available.' : 'No task selected'}
+                      {localTask ? 'Task execution logs will appear here when available.' : 'No task selected'}
                     </Text>
                   </MotionBox>
                 </Tabs.Content>
@@ -410,21 +631,23 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
 
           {/* Right side - Task Status and Action Buttons - Optimized */}
           <Box width="180px" bg="gray.50" p={4} borderRadius="md" height="fit-content">
-            {task ? (
+            {localTask ? (
               <Flex direction="column" gap={3}>
-                {/* Task Status - Compact */}
+                {/* Task Status - Compact - Use localTask instead of task */}
                 <Flex justify="space-between" align="center">
                   <Text fontSize="xs" fontWeight="medium" color="gray.600">STATUS</Text>
                   <Flex
                     bg={
-                      task.status === 'completed' ? 'green.100' :
-                        task.status === 'pending' ? 'yellow.100' :
-                          task.status === 'failed' ? 'red.100' : 'gray.100'
+                      localTask.status === 'completed' ? 'green.100' :
+                        localTask.status === 'pending' ? 'yellow.100' :
+                          localTask.status === 'running' ? 'blue.100' :
+                            localTask.status === 'denied' ? 'red.100' : 'gray.100'
                     }
                     color={
-                      task.status === 'completed' ? 'green.700' :
-                        task.status === 'pending' ? 'yellow.700' :
-                          task.status === 'failed' ? 'red.700' : 'gray.700'
+                      localTask.status === 'completed' ? 'green.700' :
+                        localTask.status === 'pending' ? 'yellow.700' :
+                          localTask.status === 'running' ? 'blue.700' :
+                            localTask.status === 'denied' ? 'red.700' : 'gray.700'
                     }
                     px={2}
                     py={1}
@@ -434,7 +657,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                     fontSize="xs"
                     textTransform="uppercase"
                   >
-                    {task.status}
+                    {localTask.status}
                   </Flex>
                 </Flex>
 
@@ -452,7 +675,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                       if (typeof window !== 'undefined') {
                         // Create a temporary textarea element
                         const textArea = document.createElement('textarea');
-                        textArea.value = task.id;
+                        textArea.value = localTask.id;
                         // Make it invisible
                         textArea.style.position = 'fixed';
                         textArea.style.left = '-999999px';
@@ -470,12 +693,12 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                     }}
                     title="Click to copy ID"
                   >
-                    {task.id}
+                    {localTask.id}
                   </Text>
                 </Box>
 
-                {/* Action Buttons - Only show for pending tasks - Now using IconButtons with navbar styling */}
-                {task.status === 'pending' && (
+                {/* Action Buttons - Only show for pending tasks */}
+                {localTask.status === 'pending' && (
                   <MotionFlex
                     justify="space-between"
                     mt={2}
@@ -483,42 +706,72 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
                   >
-                    <Tooltip content="Approve task">
-                      <IconButton
-                        aria-label="Approve task"
-                        bg="transparent"
-                        color="green.500"
-                        _hover={{ bg: 'green.50', color: 'green.600' }}
-                        _active={{ bg: 'green.100' }}
-                        _focus={{ boxShadow: '0 0 0 3px rgba(72, 187, 120, 0.3)' }}
-                        onClick={() => handleApproveTask(task)}
-                        size="md"
-                        flex="1"
-                        mr={2}
+                    {taskStatus[localTask.id] ? (
+                      <Flex
+                        justifyContent="center"
+                        alignItems="center"
+                        width="100%"
+                        p={2}
+                        borderRadius="md"
+                        bg={taskStatus[localTask.id] === 'approved' ? 'green.100' : 'red.100'}
+                        color={taskStatus[localTask.id] === 'approved' ? 'green.700' : 'red.700'}
+                        fontWeight="medium"
+                        animate={{
+                          scale: [1, 1.05, 1],
+                          opacity: [1, 0.9, 1]
+                        }}
+                        transition={{ duration: 0.5 }}
                       >
-                        <Icon as={FaCheck} />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip content="Deny task">
-                      <IconButton
-                        aria-label="Deny task"
-                        bg="transparent"
-                        color="red.500"
-                        _hover={{ bg: 'red.50', color: 'red.600' }}
-                        _active={{ bg: 'red.100' }}
-                        _focus={{ boxShadow: '0 0 0 3px rgba(245, 101, 101, 0.3)' }}
-                        onClick={() => handleDenyTask(task)}
-                        size="md"
-                        flex="1"
-                      >
-                        <Icon as={FaTimes} />
-                      </IconButton>
-                    </Tooltip>
+                        {taskStatus[localTask.id] === 'approved' ? (
+                          <Text display="flex" alignItems="center">
+                            <Icon as={FaCheck} mr={1} /> Approved
+                          </Text>
+                        ) : (
+                          <Text display="flex" alignItems="center">
+                            <Icon as={FaTimes} mr={1} /> Denied
+                          </Text>
+                        )}
+                      </Flex>
+                    ) : (
+                      <>
+                        <Tooltip content="Approve task">
+                          <IconButton
+                            aria-label="Approve task"
+                            bg="transparent"
+                            color="green.500"
+                            _hover={{ bg: 'green.50', color: 'green.600' }}
+                            _active={{ bg: 'green.100' }}
+                            _focus={{ boxShadow: '0 0 0 3px rgba(72, 187, 120, 0.3)' }}
+                            onClick={() => handleTaskAction(localTask, 'approve')}
+                            size="md"
+                            flex="1"
+                            mr={2}
+                          >
+                            <Icon as={FaCheck} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip content="Deny task">
+                          <IconButton
+                            aria-label="Deny task"
+                            bg="transparent"
+                            color="red.500"
+                            _hover={{ bg: 'red.50', color: 'red.600' }}
+                            _active={{ bg: 'red.100' }}
+                            _focus={{ boxShadow: '0 0 0 3px rgba(245, 101, 101, 0.3)' }}
+                            onClick={() => handleTaskAction(localTask, 'deny')}
+                            size="md"
+                            flex="1"
+                          >
+                            <Icon as={FaTimes} />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    )}
                   </MotionFlex>
                 )}
 
                 {/* If task is not pending, show a message */}
-                {task.status !== 'pending' && (
+                {localTask.status !== 'pending' && (
                   <Text fontSize="xs" color="gray.600" fontStyle="italic" textAlign="center" mt={2}>
                     No actions available
                   </Text>

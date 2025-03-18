@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any, Dict
 import uuid
 from datetime import datetime
 
@@ -16,12 +16,18 @@ class MCPAccess(BaseModel):
     history: List[MessageHistory]
     mentioned_agent: str
 
+
+class MCPToolCall(BaseModel):
+    tool_name: str
+    mcp_server: str
+    args: Dict[str, Any]
+    room_id: str
+
 class MCPResponse(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     sender: str
     text: str
-    summarization: str
+    summarization: str = ""
     timestamp: str = Field(default_factory=lambda: str(datetime.now()))
-    task_type: str
-    tools_called: List[dict] = Field(default_factory=list)
+    tools_called: List[MCPToolCall] = Field(default_factory=list)
     is_tool_call: bool = Field(default=False)

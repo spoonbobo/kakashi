@@ -8,7 +8,7 @@ const MotionBox = motion(Box);
 
 interface Task {
   id: string;
-  name: string;
+  summarization: string;
   role: string;
   description: string;
   created_at: string;
@@ -16,7 +16,6 @@ interface Task {
   end_time: string;
   status: string;
   result: string;
-  task_type: string;
 }
 
 interface TasksProps {
@@ -29,13 +28,17 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalTasks, setTotalTasks] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const statusOptions = createListCollection({
     items: [
       { label: "All", value: "all" },
       { label: "Pending", value: "pending" },
       { label: "Running", value: "running" },
-      { label: "Completed", value: "completed" },
+      { label: "Denied", value: "denied" },
+      { label: "Successful", value: "successful" },
       { label: "Failed", value: "failed" },
     ],
   });
@@ -46,16 +49,15 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
     setError(null);
 
     try {
-      // Create a URLSearchParams object for cleaner query parameter handling
       const params = new URLSearchParams();
       if (status && status !== 'all') {
         params.append('status', status);
       }
 
-      // Add default limit if needed
-      params.append('limit', '50'); // Fetch more tasks by default
+      params.append('page', currentPage.toString());
+      params.append('limit', itemsPerPage.toString());
+      params.append('_t', Date.now().toString());
 
-      // Build the URL with query parameters
       const url = `/api/task/get_tasks?${params.toString()}`;
       console.log("Fetching tasks with URL:", url);
 
@@ -63,7 +65,9 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
       });
 
@@ -73,16 +77,22 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
 
       const data = await response.json();
       console.log("Received tasks:", data);
-      setTasks(data);
+
+      if (data.tasks && Array.isArray(data.tasks)) {
+        setTasks(data.tasks);
+        setTotalTasks(data.total || 0);
+      } else {
+        setTasks(data);
+        setTotalTasks(data.length || 0);
+      }
     } catch (err) {
       console.error("Error in fetchTasks:", err);
       setError('Error loading tasks. Please try again later.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, itemsPerPage]);
 
-  // Initial fetch on component mount
   useEffect(() => {
     console.log("Initial useEffect running, isAuthenticated:", isAuthenticated);
     if (isAuthenticated) {
@@ -90,16 +100,78 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
     }
   }, [isAuthenticated, fetchTasks]);
 
-  // Fetch when status filter changes
   useEffect(() => {
-    console.log("Status filter changed to:", statusFilter);
+    console.log("Status filter or pagination changed");
     if (isAuthenticated) {
-      console.log("Calling fetchTasks with status:", statusFilter);
       fetchTasks(statusFilter);
-    } else {
-      console.log("Not authenticated, skipping fetchTasks");
     }
-  }, [statusFilter, isAuthenticated, fetchTasks]);
+  }, [statusFilter, currentPage, itemsPerPage, isAuthenticated, fetchTasks]);
+
+  // Add visibility change event listener to refresh when tab becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isAuthenticated) {
+        console.log("Tab became visible, refreshing tasks");
+        fetchTasks(statusFilter);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also refresh when the component becomes visible after navigation
+    const handleFocus = () => {
+      console.log("Window focused, refreshing tasks");
+      if (isAuthenticated) {
+        fetchTasks(statusFilter);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isAuthenticated, fetchTasks, statusFilter]);
+
+  // Add event listener for task status updates with immediate handling
+  useEffect(() => {
+    const handleTaskStatusUpdate = (event: CustomEvent) => {
+      const { taskId, newStatus } = event.detail;
+      console.log(`Task status update received: ${taskId} -> ${newStatus}`);
+
+      // Update the task in the local state
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === taskId ? { ...task, status: newStatus } : task
+        )
+      );
+    };
+
+    // Add event listener
+    window.addEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+    };
+  }, []);
+
+  // Add listener for forced refreshes from TaskLogger with immediate refresh
+  useEffect(() => {
+    const handleForceRefresh = () => {
+      console.log("Task history received force refresh event");
+      fetchTasks(statusFilter);
+    };
+
+    // Add event listener
+    window.addEventListener('taskHistoryForceRefresh', handleForceRefresh);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('taskHistoryForceRefresh', handleForceRefresh);
+    };
+  }, [fetchTasks, statusFilter]);
 
   if (!isAuthenticated) {
     return null;
@@ -115,11 +187,13 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
 
     switch (status.toLowerCase()) {
       case 'completed':
+      case 'successful':
         colorScheme = 'green';
         break;
       case 'pending':
         colorScheme = 'yellow';
         break;
+      case 'denied':
       case 'failed':
         colorScheme = 'red';
         break;
@@ -144,26 +218,51 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
 
   const handleRowClick = (task: Task) => {
     console.log("Row clicked for task:", task);
-    // Call the onTaskSelect prop when a row is clicked
     if (onTaskSelect) {
       onTaskSelect(task);
     }
   };
 
-  // Function to truncate text with ellipsis
   const truncateText = (text: string, maxLength: number) => {
     if (!text) return '';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
 
+  const totalPages = Math.ceil(totalTasks / itemsPerPage);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage > 0 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const handleItemsPerPageChange = (values: string[]) => {
+    if (values && values.length > 0) {
+      const newLimit = parseInt(values[0], 10);
+      setItemsPerPage(newLimit);
+      setCurrentPage(1);
+    }
+  };
+
+  const perPageOptions = createListCollection({
+    items: [
+      { label: "10 per page", value: "10" },
+      { label: "25 per page", value: "25" },
+      { label: "50 per page", value: "50" },
+      { label: "100 per page", value: "100" },
+    ],
+  });
+
   return (
     <MotionBox
       width="100%"
       height="100%"
       p={4}
-      // pl={6}
-      px={30}
+      px={4}
+      sm={{ px: 6 }}
+      md={{ px: 8 }}
+      lg={{ px: 12 }}
       borderRadius="0"
       boxShadow="sm"
       display="flex"
@@ -179,9 +278,15 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
       }}
       overflowX="auto"
     >
-      <Flex justifyContent="space-between" alignItems="center" mb={4}>
+      <Flex
+        justifyContent="space-between"
+        alignItems="center"
+        mb={4}
+        flexDirection={{ base: "column", md: "row" }}
+        gap={2}
+      >
         <Text fontSize="xl" fontWeight="bold" textAlign="left">Task History</Text>
-        <Flex gap={2} alignItems="center">
+        <Flex gap={2} alignItems="center" flexWrap="wrap">
           <Text fontSize="sm">Status:</Text>
           <Select.Root
             size="sm"
@@ -225,41 +330,138 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
       ) : tasks.length === 0 ? (
         <Text textAlign="center" my={8}>No tasks found.</Text>
       ) : (
-        <Box borderWidth="1px" borderRadius="md" overflow="hidden">
-          <Table.Root variant="outline" size="md" colorScheme="gray">
-            <Table.Header bg="gray.50">
-              <Table.Row>
-                <Table.ColumnHeader fontWeight="semibold" width="10%">ID</Table.ColumnHeader>
-                <Table.ColumnHeader fontWeight="semibold" width="15%">Role</Table.ColumnHeader>
-                <Table.ColumnHeader fontWeight="semibold" width="15%">Type</Table.ColumnHeader>
-                <Table.ColumnHeader fontWeight="semibold" width="30%">Description</Table.ColumnHeader>
-                <Table.ColumnHeader fontWeight="semibold" width="20%">Created</Table.ColumnHeader>
-                <Table.ColumnHeader fontWeight="semibold" width="10%">Status</Table.ColumnHeader>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {tasks.map((task) => (
-                <Table.Row
-                  key={task.id}
-                  _hover={{ bg: "gray.50", cursor: "pointer" }}
-                  transition="background-color 0.2s"
-                  onClick={() => handleRowClick(task)}
-                >
-                  <Table.Cell fontWeight="medium">{task.id}</Table.Cell>
-                  <Table.Cell>{task.role}</Table.Cell>
-                  <Table.Cell>{task.task_type || 'N/A'}</Table.Cell>
-                  <Table.Cell>
-                    <Box title={task.description} fontSize="sm">
-                      {truncateText(task.description, 50)}
-                    </Box>
-                  </Table.Cell>
-                  <Table.Cell fontSize="sm">{formatDate(task.created_at)}</Table.Cell>
-                  <Table.Cell>{getStatusBadge(task.status)}</Table.Cell>
+        <>
+          <Box borderWidth="1px" borderRadius="md" overflow="auto">
+            <Table.Root variant="outline" size="md" colorScheme="gray">
+              <Table.Header bg="gray.50" position="sticky" top={0} zIndex={1}>
+                <Table.Row>
+                  <Table.ColumnHeader fontWeight="semibold" width={{ base: "20%", md: "10%" }}>ID</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="semibold" width={{ base: "25%", md: "15%" }}>Role</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="semibold" width={{ base: "55%", md: "45%" }}>Summarization</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="semibold" width="20%" display={{ base: "none", md: "table-cell" }}>Created</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="semibold" width="10%" textAlign="center">Status</Table.ColumnHeader>
                 </Table.Row>
-              ))}
-            </Table.Body>
-          </Table.Root>
-        </Box>
+              </Table.Header>
+              <Table.Body>
+                {tasks.map((task) => (
+                  <Table.Row
+                    key={task.id}
+                    _hover={{ bg: "gray.50", cursor: "pointer" }}
+                    transition="background-color 0.2s"
+                    onClick={() => handleRowClick(task)}
+                  >
+                    <Table.Cell fontWeight="medium" fontSize={{ base: "xs", md: "sm" }}>{task.id}</Table.Cell>
+                    <Table.Cell fontSize={{ base: "xs", md: "sm" }}>{task.role}</Table.Cell>
+                    <Table.Cell>
+                      <Box title={task.summarization} fontSize={{ base: "xs", md: "sm" }}>
+                        {truncateText(task.summarization, 100)}
+                      </Box>
+                    </Table.Cell>
+                    <Table.Cell fontSize={{ base: "xs", md: "sm" }} display={{ base: "none", md: "table-cell" }}>{formatDate(task.created_at)}</Table.Cell>
+                    <Table.Cell textAlign="center">{getStatusBadge(task.status)}</Table.Cell>
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table.Root>
+          </Box>
+
+          <Flex
+            justifyContent="space-between"
+            alignItems="center"
+            mt={4}
+            flexDirection={{ base: "column", md: "row" }}
+            gap={3}
+          >
+            <Flex alignItems="center" gap={2}>
+              <Text fontSize="sm">Rows per page:</Text>
+              <Select.Root
+                size="sm"
+                width="120px"
+                collection={perPageOptions}
+                defaultValue={[itemsPerPage.toString()]}
+                onValueChange={(values) => handleItemsPerPageChange(values.value)}
+              >
+                <Select.HiddenSelect />
+                <Select.Control>
+                  <Select.Trigger>
+                    <Select.ValueText />
+                  </Select.Trigger>
+                  <Select.IndicatorGroup>
+                    <Select.Indicator />
+                  </Select.IndicatorGroup>
+                </Select.Control>
+                <Portal>
+                  <Select.Positioner>
+                    <Select.Content>
+                      {perPageOptions.items.map((option) => (
+                        <Select.Item item={option} key={option.value}>
+                          {option.label}
+                          <Select.ItemIndicator />
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                  </Select.Positioner>
+                </Portal>
+              </Select.Root>
+            </Flex>
+
+            <Flex gap={1} alignItems="center">
+              <Box as="button"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(1)}
+                px={2} py={1}
+                borderRadius="md"
+                bg={currentPage === 1 ? "gray.100" : "gray.200"}
+                color={currentPage === 1 ? "gray.400" : "gray.700"}
+                _hover={{ bg: currentPage === 1 ? "gray.100" : "gray.300" }}
+              >
+                «
+              </Box>
+              <Box as="button"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                px={2} py={1}
+                borderRadius="md"
+                bg={currentPage === 1 ? "gray.100" : "gray.200"}
+                color={currentPage === 1 ? "gray.400" : "gray.700"}
+                _hover={{ bg: currentPage === 1 ? "gray.100" : "gray.300" }}
+              >
+                ‹
+              </Box>
+
+              <Text mx={2} fontSize="sm">
+                Page {currentPage} of {totalPages || 1}
+              </Text>
+
+              <Box as="button"
+                disabled={currentPage === totalPages || totalPages === 0}
+                onClick={() => handlePageChange(currentPage + 1)}
+                px={2} py={1}
+                borderRadius="md"
+                bg={currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.200"}
+                color={currentPage === totalPages || totalPages === 0 ? "gray.400" : "gray.700"}
+                _hover={{ bg: currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.300" }}
+              >
+                ›
+              </Box>
+              <Box as="button"
+                disabled={currentPage === totalPages || totalPages === 0}
+                onClick={() => handlePageChange(totalPages)}
+                px={2} py={1}
+                borderRadius="md"
+                bg={currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.200"}
+                color={currentPage === totalPages || totalPages === 0 ? "gray.400" : "gray.700"}
+                _hover={{ bg: currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.300" }}
+              >
+                »
+              </Box>
+            </Flex>
+
+            <Text fontSize="sm" color="gray.600">
+              Showing {tasks.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, totalTasks)} of {totalTasks} tasks
+            </Text>
+          </Flex>
+        </>
       )}
     </MotionBox>
   );

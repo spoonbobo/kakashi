@@ -3,7 +3,7 @@ import { useAuth } from "@/auth/context";
 import { motion } from "framer-motion";
 const MotionBox = motion.create(Box);
 
-export const Messenger = () => {
+export const Notifications = () => {
     const { isAuthenticated } = useAuth();
 
     if (!isAuthenticated) {
@@ -31,8 +31,8 @@ export const Messenger = () => {
             }}
         >
             <VStack align="center">
-                <Text fontSize="xl" fontWeight="bold">Messenger</Text>
-                <Text>This is a placeholder for messenger.</Text>
+                <Text fontSize="xl" fontWeight="bold">Notification</Text>
+                <Text>This is a placeholder for Notification.</Text>
                 <Text>Feature coming soon!</Text>
             </VStack>
         </MotionBox>

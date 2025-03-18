@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Text, Box } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { Navbar } from '../components/navbar';
 import WelcomeBox from '../components/box/welcome_box';
 import AgentTaskPanel from '../components/tasks/task_panel';
@@ -12,7 +12,7 @@ import { Tasks } from '../components/tasks/task_history';
 import TaskLogger from '../components/tasks/task_logger';
 import ChatRoom from '../components/chat/chat_room';
 import { KnowledgeBase } from '../components/kb/knowledge_base';
-import { Messenger } from '../components/chat/messenger';
+import { Notifications } from '../components/alert/notifications';
 import "./globals.css"
 
 
@@ -177,8 +177,8 @@ export default function Home() {
           }
           rightComponent={
             <ResizableLayoutH
-              topComponent={<AgentTaskPanel title="Task" onTaskSelect={setSelectedTask} />}
-              bottomComponent={<Messenger />}
+              topComponent={<AgentTaskPanel title="Recent Tasks" onTaskSelect={setSelectedTask} />}
+              bottomComponent={<Notifications />}
             />}
           initialLeftWidth="75%"
         />
