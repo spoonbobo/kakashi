@@ -6,7 +6,6 @@ import jwt from 'jsonwebtoken';
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
-// Define interfaces for better type safety
 interface User {
   id: string;
   username: string;
@@ -19,28 +18,13 @@ interface ChatMessage {
   sender: string;
   timestamp: Date;
   username?: string;
+  task_id?: string;
+  task_type: string;
+  is_tool_call: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tools_called: any[];
+  summarization: string;
 }
-
-interface TaskData {
-  name: string;
-  role: string;
-  description: string;
-  task_id: string;
-  room_id: string;
-}
-
-interface TaskResponse {
-  id: string;
-  task_executor: string;
-  task_description: string;
-  task_create_time: Date;
-  task_status: string;
-  task_result: string | null;
-}
-
-// Constants
-const MAX_INITIAL_MESSAGES = 50;
-const MAX_STORED_MESSAGES = 500;
 
 export const setupChatServer = (httpServer: HttpServer) => {
   const io = new Server(httpServer, {
@@ -51,48 +35,37 @@ export const setupChatServer = (httpServer: HttpServer) => {
   });
 
   // Redis setup
-  const pubClient = createClient({ 
-    url: process.env.REDIS_URL,
-    socket: {
-      reconnectStrategy: (retries) => {
-        // Exponential backoff with max delay of 10 seconds
-        return Math.min(retries * 100, 10000);
-      }
-    }
-  });
-  
-  pubClient.on('error', (err) => {
-    console.error('Redis client error:', err);
-  });
-  
+  const pubClient = createClient({ url: process.env.REDIS_URL });
   const subClient = pubClient.duplicate();
 
-  // Connect Redis clients and set up adapter
-  Promise.all([pubClient.connect(), subClient.connect()])
-    .then(() => {
-      io.adapter(createAdapter(pubClient, subClient));
-      console.log('Redis adapter configured successfully');
-    })
-    .catch(err => {
-      console.error('Failed to connect Redis clients:', err);
-    });
+  Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+    io.adapter(createAdapter(pubClient, subClient));
+  });
 
-  // Improved user tracking system with Maps for O(1) lookups
+  // Improved user tracking system
   const rooms = new Map<string, Set<User>>();
   const messageHistory = new Map<string, ChatMessage[]>();
   
   // Track user connections by room and userId
   const userConnections = new Map<string, Map<string, Set<string>>>();
 
-  // Authentication middleware
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
+    const isTaskPanel = socket.handshake.auth.isTaskPanel;
+    
+    // Allow task panels to connect without full authentication
+    if (isTaskPanel) {
+      socket.data.isTaskPanel = true;
+      return next();
+    }
+    
     if (!token) {
       return next(new Error('Authentication error'));
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { userId: string, username: string };
+      // @ts-expect-error: jwt.verify is not defined
+      const decoded = jwt.verify(token, process.env.JWT_SECRET) as { userId: string, username: string };
       socket.data.user = {
         id: decoded.userId,
         username: decoded.username
@@ -104,33 +77,21 @@ export const setupChatServer = (httpServer: HttpServer) => {
     }
   });
 
-  // Connection handler
+  const MAX_INITIAL_MESSAGES = 50;
+  const MAX_STORED_MESSAGES = 500;
+
   io.on('connection', async (socket) => {
-    const user = socket.data.user;
     let roomId = socket.handshake.auth.roomId;
     const isAgent = socket.handshake.auth.isAgent;
-    const isTaskPanel = socket.handshake.auth.isTaskPanel;
+    
+    const user = socket.data.user;
 
-    // Special handling for task logger connections
-    if (isTaskPanel && roomId) {
-      socket.join(roomId);
-      console.log(`Task Panel connected for room: ${roomId}`);
-      return; // Skip the rest of the connection handling
-    }
-
-    // Create a new room if needed
     if (!roomId && !isAgent) {
-      try {
-        roomId = await createRoomInDatabase();
-        rooms.set(roomId, new Set());
-        messageHistory.set(roomId, []);
-        userConnections.set(roomId, new Map());
-        socket.emit('room_created', { roomId });
-      } catch (error) {
-        console.error('Error creating room:', error);
-        socket.disconnect();
-        return;
-      }
+      roomId = await createRoomInDatabase();
+      rooms.set(roomId, new Set());
+      messageHistory.set(roomId, []);
+      userConnections.set(roomId, new Map());
+      socket.emit('room_created', { roomId });
     }
 
     socket.join(roomId);
@@ -155,103 +116,105 @@ export const setupChatServer = (httpServer: HttpServer) => {
     userConnections.get(roomId)?.get(user.id)?.add(socket.id);
 
     // Fetch recent messages from Redis
-    try {
-      const redisKey = `chat:room:${roomId}:messages`;
-      const messagesRaw = await pubClient.lRange(redisKey, -MAX_INITIAL_MESSAGES, -1);
-      const messages = messagesRaw.map(msg => JSON.parse(msg));
-      socket.emit('room_data', { messages, users: Array.from(roomUsers || []) });
-    } catch (error) {
-      console.error('Error fetching messages from Redis:', error);
-      // Send empty messages as fallback
-      socket.emit('room_data', { messages: [], users: Array.from(roomUsers || []) });
-    }
+    const redisKey = `chat:room:${roomId}:messages`;
+    const messagesRaw = await pubClient.lRange(redisKey, -MAX_INITIAL_MESSAGES, -1);
+    const messages = messagesRaw.map(msg => JSON.parse(msg));
 
-    // Message handler
+    socket.emit('room_data', { messages, users: Array.from(roomUsers || []) });
+
     socket.on('message', async (message: ChatMessage) => {
-      try {
-        const newMessage = { 
-          ...message, 
-          id: message.id || uuidv4(), 
-          timestamp: new Date(), 
-          username: user.username 
-        };
+      const newMessage = { 
+        ...message, 
+        id: message.id || uuidv4(), 
+        timestamp: new Date(), 
+        username: user.username 
+      };
 
-        // Store message in Redis
-        const redisKey = `chat:room:${roomId}:messages`;
-        await pubClient.rPush(redisKey, JSON.stringify(newMessage));
-        await pubClient.lTrim(redisKey, -MAX_STORED_MESSAGES, -1);
+      // Store message in Redis
+      await pubClient.rPush(redisKey, JSON.stringify(newMessage));
+      await pubClient.lTrim(redisKey, -MAX_STORED_MESSAGES, -1);
 
-        // Check if this is a tool call message and create a task
-        if (message.text && message.text.includes('<tools>')) {
-          try {
-            const taskName = message.text.match(/<tools>\['(.+?)'\]<\/tools>/)?.[1] || 'DUMMY';
-            await createTaskInDatabase({
-              name: taskName,
-              role: message.sender,
-              description: message.text,
-              task_id: newMessage.id,
-              room_id: roomId
-            });
-            
-            // Create task object
-            const taskData: TaskResponse = {
-              id: newMessage.id,
-              task_executor: message.sender,
-              task_description: message.text,
-              task_create_time: newMessage.timestamp,
-              task_status: 'pending',
-              task_result: null
-            };
-            
-            // Broadcast task creation event to all clients in the room
-            io.to(roomId).emit('task_created', taskData);
-          } catch (error) {
-            console.error('Error creating task:', error);
-          }
+      // Check if this is a tool call message and create a task
+      if (message.text && message.is_tool_call) {
+        try {
+          // Assign task_id to both message and newMessage
+          const taskId = newMessage.id;
+          const taskType = message.task_type;
+          // const taskName = message.summarization;
+          const toolsCalled = message.tools_called;
+
+          console.log("toolsCalled", toolsCalled);
+          message.task_id = taskId;
+          message.task_type = taskType;
+          newMessage.task_id = taskId;
+                    
+          // Create task object with proper sender/executor identification
+          const taskData = {
+            id: taskId,
+            role: message.sender || user.username, // Ensure we have a fallback
+            description: message.text,
+            created_at: newMessage.timestamp,
+            status: 'pending',
+            result: null
+          };
+          console.log('Creating task with data:', taskData);
+          
+          // Store task in database
+          await createTask({
+            summarization: "task summarization",
+            role: message.sender || user.username,
+            description: message.text,
+            task_id: taskId,
+            room_id: roomId,
+            task_type: taskType,
+            tools_called: toolsCalled,
+          });
+          
+          // Broadcast task creation event to all clients in the room
+          console.log(`Emitting task_created event to room ${roomId}:`, taskData);
+          
+          // Use a more reliable broadcast method
+          const roomSockets = await io.in(roomId).fetchSockets();
+          console.log(`Broadcasting task to ${roomSockets.length} sockets in room ${roomId}`);
+          
+          // Broadcast to each socket individually to ensure delivery
+          roomSockets.forEach(s => {
+            s.emit('task_created', taskData);
+          });
+          
+          // Also broadcast using the standard method as backup
+          io.to(roomId).emit('task_created', taskData);
+        } catch (error) {
+          console.error('Error creating task:', error);
         }
-
-        // Broadcast the message to all clients in the room
-        io.to(roomId).emit('message', newMessage);
-        
-        // Send acknowledgment back to the sender
-        socket.emit('message_ack', { 
-          id: newMessage.id,
-          status: 'delivered',
-          timestamp: new Date()
-        });
-      } catch (error) {
-        console.error('Error processing message:', error);
-        socket.emit('message_ack', { 
-          id: message.id || 'unknown',
-          status: 'failed',
-          timestamp: new Date(),
-          error: 'Failed to process message'
-        });
       }
+
+      // Broadcast the message to all clients in the room
+      io.to(roomId).emit('message', newMessage);
+      
+      // Send acknowledgment back to the sender
+      socket.emit('message_ack', { 
+        id: newMessage.id,
+        status: 'delivered',
+        timestamp: new Date()
+      });
     });
 
-    // Disconnect handler
     socket.on('disconnect', () => {
-      try {
-        const userSockets = userConnections.get(roomId)?.get(user.id);
-        if (userSockets) {
-          userSockets.delete(socket.id);
+      const userSockets = userConnections.get(roomId)?.get(user.id);
+      userSockets?.delete(socket.id);
 
-          // Remove user only if no active sockets remain
-          if (userSockets.size === 0) {
-            userConnections.get(roomId)?.delete(user.id);
-            rooms.get(roomId)?.forEach(u => {
-              if (u.id === user.id) rooms.get(roomId)?.delete(u);
-            });
-            
-            // Only emit user_left if username doesn't start with "agent"
-            if (!user.username.startsWith('agent')) {
-              socket.to(roomId).emit('user_left', user.id);
-            }
-          }
+      // Remove user only if no active sockets remain
+      if (userSockets && userSockets.size === 0) {
+        userConnections.get(roomId)?.delete(user.id);
+        rooms.get(roomId)?.forEach(u => {
+          if (u.id === user.id) rooms.get(roomId)?.delete(u);
+        });
+        
+        // Only emit user_left if username doesn't start with "agent"
+        if (!user.username.startsWith('agent')) {
+          socket.to(roomId).emit('user_left', user.id);
         }
-      } catch (error) {
-        console.error('Error handling disconnect:', error);
       }
     });
   });
@@ -268,8 +231,9 @@ const httpServer = app.listen(3001, () => {
 // Setup the chat server
 setupChatServer(httpServer);
 
-// Helper function to create a room in the database
+// Add this helper function
 const createRoomInDatabase = async (): Promise<string> => {
+  console.log(process.env.CLIENT_URL);
   try {
     const response = await fetch(`${process.env.CLIENT_URL}/api/chat/create_room`, {
       method: 'POST',
@@ -290,9 +254,19 @@ const createRoomInDatabase = async (): Promise<string> => {
   }
 };
 
-// Helper function for task creation
-const createTaskInDatabase = async (taskData: TaskData): Promise<any> => {
+// Add this helper function for task creation
+const createTask = async (taskData: {
+  summarization: string;
+  role: string;
+  description: string;
+  task_id: string;
+  room_id: string;
+  task_type: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tools_called: any[];
+}): Promise<any> => {
   try {
+    console.log("taskData", taskData);
     const response = await fetch(`${process.env.CLIENT_URL}/api/task/create_task`, {
       method: 'POST',
       headers: {

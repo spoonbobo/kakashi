@@ -3,10 +3,10 @@ import { Tooltip } from "@/components/tooltip"
 import {
     FaCog,
     // FaCheck,
+    FaComment,
     FaTasks,
     FaPlus,
     FaQuestionCircle,
-    FaUsers,
     FaBook,
     FaBookOpen
 } from 'react-icons/fa';
@@ -27,10 +27,8 @@ export const Navbar = memo(function Navbar({
     onConversationsClick,
     onNewChatClick,
     onTasksClick,
-    onApprovalsClick,
-    // onHelpClick,
-    // onFeedbackClick,
-    onKnowledgeBaseClick
+    onKnowledgeBaseClick,
+    onHelpClick
 }: NavbarProps) {
 
     const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
@@ -93,7 +91,7 @@ export const Navbar = memo(function Navbar({
                         aria-label="Rooms"
                         onClick={onConversationsClick}
                     >
-                        <Icon as={FaUsers} />
+                        <Icon as={FaComment} />
                     </IconButton>
                 </Tooltip>
                 <Tooltip content="Tasks">
@@ -131,7 +129,7 @@ export const Navbar = memo(function Navbar({
                         _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
                         _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
                         aria-label="Help"
-                        onClick={onApprovalsClick}
+                        onClick={onHelpClick}
                     >
                         <Icon as={FaQuestionCircle} />
                     </IconButton>

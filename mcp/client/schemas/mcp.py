@@ -20,4 +20,8 @@ class MCPResponse(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     sender: str
     text: str
+    summarization: str
     timestamp: str = Field(default_factory=lambda: str(datetime.now()))
+    task_type: str
+    tools_called: List[dict] = Field(default_factory=list)
+    is_tool_call: bool = Field(default=False)

@@ -4,26 +4,24 @@ import { useState, useEffect } from 'react';
 import { Text, Box } from '@chakra-ui/react';
 import { Navbar } from '../components/navbar';
 import WelcomeBox from '../components/box/welcome_box';
-import AgentTaskPanel from '../components/panel/task_panel';
+import AgentTaskPanel from '../components/tasks/task_panel';
 import { ResizableLayoutV } from '@/components/stretch/resizeable_layoutV';
 import { ResizableLayoutH } from '@/components/stretch/resizeable_layoutH';
 import { ListRooms } from '../components/chat/list_rooms';
 import { Tasks } from '../components/tasks/task_history';
-import { Approvals } from '../components/approvals/approval_history';
-import TaskLogger from '../components/panel/task_logger';
+import TaskLogger from '../components/tasks/task_logger';
 import ChatRoom from '../components/chat/chat_room';
 import { KnowledgeBase } from '../components/kb/knowledge_base';
+import { Messenger } from '../components/chat/messenger';
 import "./globals.css"
-import Image from 'next/image';
-import gemma3 from '/src/images/gemma3.png';
-// import logo from '/src/images/logo.png'; // Ensure the path is correct
+
 
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [time, setTime] = useState<string>('');
-  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'approvals' | 'conversations' | 'help' | 'feedback' | 'knowledge_base'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'conversations' | 'help' | 'feedback' | 'knowledge_base'>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -42,7 +40,7 @@ export default function Home() {
         setActiveView('conversations');
         setSessionId(null);
       } else if (view) {
-        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'approvals' | 'knowledge_base');
+        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'help' | 'feedback' | 'knowledge_base');
         setSessionId(null);
       }
     };
@@ -95,10 +93,6 @@ export default function Home() {
     setActiveView('tasks');
   };
 
-  const handleApprovalsClick = () => {
-    setActiveView('approvals');
-  };
-
   const handleHelpClick = () => {
     setActiveView('help');
   };
@@ -144,10 +138,10 @@ export default function Home() {
         onConversationsClick={handleConversationsClick}
         onNewChatClick={handleNewChatClick}
         onTasksClick={handleTasksClick}
-        onApprovalsClick={handleApprovalsClick}
         onHelpClick={handleHelpClick}
         onFeedbackClick={handleFeedbackClick}
         onKnowledgeBaseClick={handleKnowledgeBaseClick}
+        onApprovalsClick={() => { }}
       />
 
       <Box
@@ -169,48 +163,38 @@ export default function Home() {
           leftComponent={
             activeView === 'chat' ? <ChatRoom roomId={sessionId || ''} /> :
               activeView === 'conversations' ? <ListRooms /> :
-                activeView === 'tasks' ? <Tasks /> :
-                  activeView === 'approvals' ? <Approvals /> :
-                    activeView === 'knowledge_base' ? <KnowledgeBase /> :
-                      <ListRooms />
+                activeView === 'tasks' ? <ResizableLayoutH
+                  topComponent={<Tasks onTaskSelect={task => setSelectedTask(task)} />}
+                  bottomComponent={<TaskLogger
+                    key={selectedTask?.id || 'no-task'}
+                    title="Task Detail"
+                    task={selectedTask}
+                  />}
+                /> :
+                  activeView === 'knowledge_base' ? <KnowledgeBase /> :
+                    // activeView === 'help' ? <Help /> :
+                    <ListRooms />
           }
           rightComponent={
             <ResizableLayoutH
               topComponent={<AgentTaskPanel title="Task" onTaskSelect={setSelectedTask} />}
-              bottomComponent={<TaskLogger title="Task Log" task={selectedTask} />}
+              bottomComponent={<Messenger />}
             />}
           initialLeftWidth="75%"
         />
       </Box>
-      <Box position="absolute" bottom="0" width="100%" display="flex" justifyContent="space-between" alignItems="flex-end" px="10px">
-        {/* Version on the left */}
-        <Text fontSize="sm" color="gray.500" mb="2">
-          v0.0.2
-        </Text>
+      <Box
+        position="absolute"
+        bottom="0"
+        width="100%"
+        display="flex"
+        justifyContent="flex-end"
+        alignItems="flex-end"
+        px="10px"
+        zIndex="1"
+        pointerEvents="none"
+      >
 
-        {/* Gemma 3 and Logo on the right */}
-        <Box display="flex" alignItems="flex-end">
-          <Box width="100px" height="auto" overflow="hidden" mr="2" mb="2">
-            <Image
-              src={gemma3}
-              alt="Gemma3"
-              layout="responsive"
-              width={50}
-              height={50}
-              className="shiny-logo"
-            />
-          </Box>
-          {/* <Box width="100px" height="auto" overflow="hidden" mb="2">
-            <Image
-              src={logo}
-              alt="Logo"
-              layout="responsive"
-              width={50}
-              height={50}
-              className="shiny-logo"
-            />
-          </Box> */}
-        </Box>
       </Box>
     </Box>
   );

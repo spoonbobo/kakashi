@@ -3,6 +3,7 @@ import { Box, Text, Badge, Flex } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 
 interface TaskBoxProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     item: any;
     onClick: () => void;
     height?: string;
@@ -103,19 +104,6 @@ export const TaskBox: React.FC<TaskBoxProps> = ({
             initial="hidden"
             animate="visible"
             variants={containerVariants}
-            sx={{
-                transition: 'all 0.3s ease',
-                _hover: {
-                    boxShadow: 'md',
-                    borderColor: '#63B3ED', // blue.300 equivalent
-                    transform: 'translateY(-2px)'
-                },
-                ...(isNew ? {
-                    boxShadow: "0px 0px 10px 2px rgba(66, 153, 225, 0.5)",
-                    borderColor: "rgba(66, 153, 225, 0.8)",
-                    backgroundColor: "rgba(235, 248, 255, 0.6)"
-                } : {})
-            }}
         >
             <MotionFlex
                 justify="space-between"
@@ -124,17 +112,16 @@ export const TaskBox: React.FC<TaskBoxProps> = ({
             >
                 <MotionText
                     fontWeight="bold"
-                    noOfLines={1}
                     maxWidth="70%"
                     fontSize="sm"
                 >
-                    {item.name || 'Task'}
+                    {item.task_id}
                 </MotionText>
                 <MotionBadge
-                    colorScheme={getStatusColor(item.task_status)}
+                    colorScheme={getStatusColor(item.status)}
                     fontSize="xs"
                 >
-                    {item.task_status || 'pending'}
+                    {item.status}
                 </MotionBadge>
             </MotionFlex>
 
@@ -146,29 +133,27 @@ export const TaskBox: React.FC<TaskBoxProps> = ({
                 <MotionText
                     fontSize="xs"
                     color="gray.600"
-                    noOfLines={1}
                     maxWidth="70%"
                 >
-                    {item.task_executor}
+                    {item.summarization}
                 </MotionText>
                 <MotionText
                     fontSize="2xs"
                     color="gray.500"
                 >
-                    {formatTime(item.task_create_time)}
+                    {formatTime(item.created_at)}
                 </MotionText>
             </MotionFlex>
 
             <MotionText
                 fontSize="xs"
-                noOfLines={2}
                 flex="1"
                 overflow="hidden"
                 textOverflow="ellipsis"
                 lineHeight="1.3"
                 mt={0.5}
             >
-                {formatDescription(item.task_description)}
+                {formatDescription(item.description)}
             </MotionText>
         </MotionBox>
     );

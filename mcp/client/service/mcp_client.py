@@ -91,6 +91,7 @@ class MCPClientManager:
         tools = tools.tools
         logger.info(f"Tools: {tools}")
         ollama_tools = [self.convert_mcp_tool_desc_to_ollama_tool(tool) for tool in tools]
+        descriptions = [tool["function"]["description"] for tool in ollama_tools]
         logger.info(f"Ollama tools: {ollama_tools}")
 
 
@@ -99,15 +100,25 @@ class MCPClientManager:
             messages=conversions,
             tools=ollama_tools,
         )
-        
+
         tool_calls = llm_response.message.tool_calls
         if tool_calls is None:
-            tool_calls = []
-        tools_called = [tool_call.function.name for tool_call in tool_calls]
+                tool_calls = []
+        tools_called = [
+            {
+                "name": tool_call.function.name,
+                "args": tool_call.function.arguments
+            }
+            for tool_call in tool_calls
+        ]
         logger.info(f"Tools called: {tools_called}")
         response = MCPResponse(
             sender=access.mentioned_agent,
-            text=f"<tools>{tools_called}</tools>",
+            text=",".join(descriptions),
+            summarization="TODO",
+            task_type=byp_mcp_server,
+            is_tool_call=True,
+            tools_called=tools_called
         )
         return response
 

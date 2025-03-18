@@ -15,6 +15,8 @@ interface ChatMessage {
   text: string;
   sender: string;
   timestamp: Date;
+  task_id?: string;
+  is_tool_call?: boolean;
 }
 
 interface User {
@@ -318,8 +320,8 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
           <AnimatePresence initial={false}>
             {messages.map((msg) => {
               const isCurrentUser = msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString();
-              const isToolCall = msg.text.includes('<tools>') && msg.text.includes('</tools>');
-              const isSystem = msg.sender === 'system' || isToolCall;
+              const isToolCall = msg.is_tool_call;
+              const isSystem = msg.sender === 'system';
               return (
                 <MotionFlex
                   key={msg.id}
@@ -358,7 +360,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
                       {!isSystem && <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>}
                       <Text fontSize={isSystem ? "sm" : "md"} fontStyle={isSystem ? "italic" : "normal"}>
                         {isToolCall
-                          ? `${msg.sender} initiated task "${msg.text.match(/<tools>\['(.+?)'\]<\/tools>/)?.[1] || 'DUMMY'}".`
+                          ? `${msg.sender} initiated task ${msg.id}.`
                           : msg.text}
                       </Text>
                       {!isSystem && <Text fontSize="xs" textAlign="right">
