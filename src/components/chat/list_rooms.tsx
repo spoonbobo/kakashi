@@ -36,7 +36,7 @@ interface Room {
 }
 
 export const ListRooms = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authChecked } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +96,16 @@ export const ListRooms = () => {
     window.dispatchEvent(new CustomEvent('roomChange', { detail: room.id }));
   };
 
-  if (!isAuthenticated) return null;
+  if (authChecked && !isAuthenticated) {
+    return (
+      <Box p={4} textAlign="center" borderRadius="md" bg="gray.50" my={4}>
+        <Text fontWeight="medium" color="gray.700">Please log in to view rooms</Text>
+        <Text fontSize="sm" color="gray.500" mt={1}>
+          Your session may have expired or you&apos;ve been logged out
+        </Text>
+      </Box>
+    );
+  }
 
   return (
     <Flex direction="column" width="100%" height="100%" overflow="hidden" px={20}>

@@ -67,9 +67,22 @@ export const AuthPopover = memo(() => {
             <Popover.Arrow />
             <Popover.Body>
               {isAuthenticated ? (
-                <IconButton onClick={logout} colorScheme="red" size="sm" aria-label="Logout">
-                  <Icon as={FaSignOutAlt} />
-                </IconButton>
+                <div>
+                  <Popover.Title fontWeight="medium">Account</Popover.Title>
+                  <Text my="2">
+                    Logged in as <strong>{user?.username}</strong>
+                  </Text>
+                  <Button
+                    onClick={logout}
+                    colorScheme="red"
+                    size="sm"
+                    leftIcon={<Icon as={FaSignOutAlt} />}
+                    width="full"
+                    mt="2"
+                  >
+                    Logout
+                  </Button>
+                </div>
               ) : (
                 <>
                   <Popover.Title fontWeight="medium">Login</Popover.Title>

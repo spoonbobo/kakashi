@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, Flex, Input, Tabs, IconButton, Icon } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/auth/context';
-import { FaCheck, FaTimes } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaSync } from 'react-icons/fa';
 import { Tooltip } from "@/components/tooltip";
 import { ToastContainer, toast, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -13,6 +13,7 @@ interface TaskLoggerProps {
   title?: string;
   task?: {
     id: string;
+    task_id: string;
     name: string;
     description: string;
     created_at: string;
@@ -21,6 +22,7 @@ interface TaskLoggerProps {
     status: string;
     result: string;
     summarization?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tools_called: Record<string, any>;
   };
   onApprove?: (taskId: string, editedToolCalls: Array<Record<string, any>>) => void;
@@ -36,21 +38,71 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
   onDeny
 }) => {
   const { isAuthenticated } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_priority, _setPriority] = useState("High");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_timeout, _setTimeout] = useState("30");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_maxRetries, _setMaxRetries] = useState("3");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_toolName, _setToolName] = useState("file_search");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_query, _setQuery] = useState("user_data.json");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_activeTab, setActiveTab] = useState("details");
   const [editedToolCalls, setEditedToolCalls] = useState<Array<Record<string, any>>>([]);
-  const [localTask, setLocalTask] = useState(task);
+  const [localTask, setLocalTask] = useState<TaskLoggerProps['task'] | null>(task || null);
   const [actionAnimation, setActionAnimation] = useState<'none' | 'approve' | 'deny'>('none');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
-  useEffect(() => {
-    if (task) {
-      console.log(`[TaskLogger] New task received: ID=${task.id}, Status=${task.status}`);
+  // Function to fetch the latest task status from the API
+  const fetchTaskStatus = useCallback(async (taskId: string) => {
+    if (!taskId) return;
+
+    try {
+      setIsRefreshing(true);
+      console.log(`[TaskLogger] Fetching latest status for task ${taskId}`);
+
+      const response = await fetch(`/api/task/get_task_status?taskId=${taskId}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch task status: ${response.statusText}`);
+      }
+
+      const updatedTask = await response.json();
+      console.log(`[TaskLogger] Received updated task:`, updatedTask);
+
+      // Update local state with the latest task data
+      setLocalTask(updatedTask);
+
+      // Update tool calls if available
+      if (updatedTask.tools_called) {
+        if (updatedTask.tools_called.tools_called && Array.isArray(updatedTask.tools_called.tools_called)) {
+          setEditedToolCalls(JSON.parse(JSON.stringify(updatedTask.tools_called.tools_called)));
+        } else {
+          setEditedToolCalls(JSON.parse(JSON.stringify(updatedTask.tools_called)));
+        }
+      }
+
+      return updatedTask;
+    } catch (error) {
+      console.error("Error fetching task status:", error);
+      toast.error(`Error refreshing task data: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+        className: 'professional-toast',
+        progressClassName: 'professional-progress',
+      });
+    } finally {
+      setIsRefreshing(false);
     }
-  }, [task]);
+  }, []);
+
+  // Fetch task status when task changes
+  useEffect(() => {
+    if (task?.id) {
+      fetchTaskStatus(task.id);
+    }
+  }, [task?.id, fetchTaskStatus]);
 
   useEffect(() => {
     _setPriority("High");
@@ -60,37 +112,20 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
     _setQuery("user_data.json");
     setActiveTab("details");
 
-    if (task?.tools_called) {
+    // Only set initial tool calls if we don't have them yet
+    if (task?.tools_called && editedToolCalls.length === 0) {
       console.log("task.tools_called", task.tools_called);
       if (task.tools_called.tools_called && Array.isArray(task.tools_called.tools_called)) {
         setEditedToolCalls(JSON.parse(JSON.stringify(task.tools_called.tools_called)));
       } else {
         setEditedToolCalls(JSON.parse(JSON.stringify(task.tools_called)));
       }
-    } else {
-      setEditedToolCalls([]);
     }
 
-    try {
-      if (task?.id) {
-        const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
-        if (storedUpdates[task.id]) {
-          console.log(`[TaskLogger] Found stored status for task ${task.id}: ${storedUpdates[task.id].status}`);
-          if (storedUpdates[task.id].status === 'approved' || storedUpdates[task.id].status === 'denied') {
-            setLocalTask(prev => prev ? { ...prev, status: storedUpdates[task.id].status } : task);
-            return;
-          } else {
-            delete storedUpdates[task.id];
-            sessionStorage.setItem('taskStatusUpdates', JSON.stringify(storedUpdates));
-            console.log(`[TaskLogger] Cleared non-final status for task ${task.id}`);
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Error retrieving task status from sessionStorage:", e);
+    // Only set initial task if we don't have it yet
+    if (!localTask && task) {
+      setLocalTask(task);
     }
-
-    setLocalTask(task);
 
     const tabsElement = document.querySelector('[role="tablist"]');
     if (tabsElement) {
@@ -99,7 +134,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
         (detailsTabTrigger as HTMLElement).click();
       }
     }
-  }, [task]);
+  }, [task, editedToolCalls.length, localTask]);
 
   useEffect(() => {
     if (localTask) {
@@ -113,7 +148,9 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
       if (newValue.trim().startsWith('{') || newValue.trim().startsWith('[')) {
         try {
           updatedToolCalls[toolIndex].args[argKey] = JSON.parse(newValue);
-        } catch (error) {
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        catch (error) {
           updatedToolCalls[toolIndex].args[argKey] = newValue;
         }
       } else {
@@ -127,83 +164,117 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
     }
   };
 
-  const handleTaskAction = useCallback((taskObj: TaskLoggerProps['task'], action: 'approve' | 'deny') => {
+  const handleTaskAction = useCallback(async (taskObj: TaskLoggerProps['task'], action: 'approve' | 'deny') => {
     if (!taskObj) return;
 
-    const newStatus = action === 'approve' ? 'approved' : 'denied';
-    console.log(`Task ${action}d:`, taskObj, "with edited tool calls:", editedToolCalls);
-
-    setLocalTask(prev => {
-      if (!prev) return taskObj;
-      return { ...prev, status: newStatus };
-    });
-
-    setActionAnimation(action);
-    setTimeout(() => setActionAnimation('none'), 1500);
+    // Prevent multiple clicks during processing
+    if (isProcessingAction) return;
 
     try {
-      const updates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
-      updates[taskObj.id] = { status: newStatus, timestamp: Date.now() };
-      sessionStorage.setItem('taskStatusUpdates', JSON.stringify(updates));
-      console.log(`[TaskLogger] Stored final status ${newStatus} for task ${taskObj.id}`);
-    } catch (e) {
-      console.error("Error storing task status:", e);
-    }
+      setIsProcessingAction(true);
 
-    window.dispatchEvent(new CustomEvent('taskStatusUpdated', {
-      detail: { taskId: taskObj.id, newStatus, timestamp: Date.now() }
-    }));
+      const newStatus = action === 'approve' ? 'approved' : 'denied';
+      console.log(`Task ${action}d:`, taskObj, "with edited tool calls:", editedToolCalls);
 
-    window.dispatchEvent(new CustomEvent('taskHistoryForceRefresh', {
-      detail: { taskId: taskObj.id, status: newStatus, timestamp: Date.now(), action }
-    }));
+      // First, update the database
+      console.log(`Updating task ${taskObj.id} status to ${newStatus} in database`);
+      await updateTaskStatusInDb(taskObj.task_id || taskObj.id, newStatus as 'approved' | 'denied');
 
-    window.dispatchEvent(new CustomEvent('taskPanelRefresh', {
-      detail: { taskId: taskObj.id, status: newStatus, timestamp: Date.now(), action }
-    }));
-
-    if (action === 'approve') {
-      toast.success(`Task "${taskObj.id}" has been approved!`, {
-        className: 'professional-toast',
-        progressClassName: 'professional-progress',
-        icon: <FaCheck color="#4CAF50" size={24} />,
+      // Then update local state
+      setLocalTask(prev => {
+        if (!prev) return taskObj;
+        return { ...prev, status: newStatus };
       });
-      onApprove?.(taskObj.id, editedToolCalls);
-    } else {
-      toast.error(`Task "${taskObj.id}" has been denied!`, {
-        className: 'professional-toast',
-        progressClassName: 'professional-progress',
-        icon: <FaTimes color="#F44336" size={24} />,
-      });
-      onDeny?.(taskObj.id, editedToolCalls);
-    }
 
-    updateTaskStatusInDb(taskObj.task_id || taskObj.id, newStatus as 'approved' | 'denied');
+      setActionAnimation(action);
+      setTimeout(() => setActionAnimation('none'), 1500);
 
-    if (action === 'approve') {
-      fetch(`/mcp/api/app/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editedToolCalls)
-      })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
+      // Dispatch events for UI updates AFTER database update
+      window.dispatchEvent(new CustomEvent('taskStatusUpdated', {
+        detail: { taskId: taskObj.id, newStatus, timestamp: Date.now() }
+      }));
+
+      window.dispatchEvent(new CustomEvent('taskHistoryForceRefresh', {
+        detail: { taskId: taskObj.id, status: newStatus, timestamp: Date.now(), action }
+      }));
+
+      window.dispatchEvent(new CustomEvent('taskPanelRefresh', {
+        detail: { taskId: taskObj.id, status: newStatus, timestamp: Date.now(), action }
+      }));
+
+      window.dispatchEvent(new CustomEvent('taskActionNotification', {
+        detail: {
+          notification: {
+            notification_id: `task-${taskObj.id}-${newStatus}-${Date.now()}`,
+            message: action === 'approve'
+              ? `Task ${taskObj.id} has been approved and will be executed`
+              : `Task ${taskObj.id} has been denied and will not be executed`,
+            sender: 'TaskSystem',
+            priority: action === 'approve' ? 'medium' : 'high',
+            status: 'new'
           }
-          return response.json();
-        })
-        .then(data => {
-          console.log("Approval API response:", data);
-        })
-        .catch(error => {
-          console.error("Error approving task:", error);
-          toast.error(`Error approving task: ${error.message}`, {
-            className: 'professional-toast',
-            progressClassName: 'professional-progress',
-          });
+        }
+      }));
+
+
+      // Store the update in session storage for persistence across page refreshes
+      try {
+        const storedUpdates = JSON.parse(sessionStorage.getItem('taskStatusUpdates') || '{}');
+        storedUpdates[taskObj.id] = { status: newStatus, timestamp: Date.now() };
+        sessionStorage.setItem('taskStatusUpdates', JSON.stringify(storedUpdates));
+      } catch (e) {
+        console.error("Error storing task update in session storage:", e);
+      }
+
+      // Show toast notification
+      if (action === 'approve') {
+        toast.success(`Task "${taskObj.id}" has been approved!`, {
+          className: 'professional-toast',
+          progressClassName: 'professional-progress',
+          icon: <FaCheck color="#4CAF50" size={24} />,
         });
+        onApprove?.(taskObj.id, editedToolCalls);
+      } else {
+        toast.error(`Task "${taskObj.id}" has been denied!`, {
+          className: 'professional-toast',
+          progressClassName: 'professional-progress',
+          icon: <FaTimes color="#F44336" size={24} />,
+        });
+        onDeny?.(taskObj.id, editedToolCalls);
+      }
+
+      // Make API call for approval
+      if (action === 'approve') {
+        const response = await fetch(`/mcp/api/app/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(editedToolCalls)
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Approval API response:", data);
+      }
+
+      // Fetch the latest task data AFTER all updates are complete
+      // Add a small delay to ensure database has time to update
+      setTimeout(async () => {
+        await fetchTaskStatus(taskObj.id);
+      }, 500);
+
+    } catch (error) {
+      console.error(`Error ${action}ing task:`, error);
+      toast.error(`Error ${action}ing task: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+        className: 'professional-toast',
+        progressClassName: 'professional-progress',
+      });
+    } finally {
+      setIsProcessingAction(false);
     }
-  }, [editedToolCalls, onApprove, onDeny]);
+  }, [editedToolCalls, onApprove, onDeny, fetchTaskStatus, isProcessingAction]);
 
   const updateTaskStatusInDb = async (taskId: string, status: 'approved' | 'denied') => {
     try {
@@ -228,7 +299,43 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
     }
   };
 
+  // Add a listener for task status updates from other components
+  useEffect(() => {
+    const handleTaskStatusUpdate = (event: CustomEvent) => {
+      const { taskId, newStatus } = event.detail;
+
+      // Only update if this is our task
+      if (localTask && localTask.id === taskId) {
+        console.log(`[TaskLogger] Received status update event for current task: ${newStatus}`);
+
+        // Refresh the task data from the server to get the complete updated task
+        fetchTaskStatus(taskId);
+      }
+    };
+
+    window.addEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('taskStatusUpdated', handleTaskStatusUpdate as EventListener);
+    };
+  }, [localTask, fetchTaskStatus]);
+
   if (!isAuthenticated) return null;
+
+  if (!localTask) {
+    return (
+      <Box
+        height="100%"
+        width="100%"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        p={5}
+      >
+        <Text color="gray.500" fontSize="lg">No task selected</Text>
+      </Box>
+    );
+  }
 
   const renderTaskMetadata = () => {
     if (!localTask) {
@@ -306,6 +413,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
         }}
       />
 
+      {/* eslint-disable-next-line react/no-unknown-property */}
       <style jsx global>{`
         .professional-toast {
           border-radius: 8px !important;
@@ -375,7 +483,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
             <Tabs.Root
               defaultValue="details"
               style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}
-              onValueChange={setActiveTab}
+              onValueChange={(value) => setActiveTab(value)}
             >
               <Tabs.List mb={4}>
                 {['Details', 'Description', 'Arguments', 'Logs'].map((tab) => (
@@ -558,147 +666,165 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
           </Box>
 
           <Box width="180px" bg="gray.50" p={4} borderRadius="md" height="fit-content">
-            {localTask ? (
-              <Flex direction="column" gap={3}>
-                <Flex justify="space-between" align="center">
-                  <Text fontSize="xs" fontWeight="medium" color="gray.600">STATUS</Text>
-                  <Flex
-                    bg={
-                      localTask.status === 'completed' ? 'green.100' :
-                        localTask.status === 'pending' ? 'yellow.100' :
-                          localTask.status === 'running' ? 'blue.100' :
-                            localTask.status === 'denied' ? 'red.100' : 'gray.100'
-                    }
-                    color={
-                      localTask.status === 'completed' ? 'green.700' :
-                        localTask.status === 'pending' ? 'yellow.700' :
-                          localTask.status === 'running' ? 'blue.700' :
-                            localTask.status === 'denied' ? 'red.700' : 'gray.700'
-                    }
-                    px={2}
-                    py={1}
-                    borderRadius="md"
-                    justifyContent="center"
-                    fontWeight="medium"
-                    fontSize="xs"
-                    textTransform="uppercase"
-                  >
-                    {localTask.status}
-                  </Flex>
+            <Flex direction="column" gap={3}>
+              <Flex justify="space-between" align="center">
+                <Text fontSize="xs" fontWeight="medium" color="gray.600">STATUS</Text>
+                <Flex align="center">
+                  {localTask ? (
+                    <>
+                      <Flex
+                        bg={
+                          localTask.status === 'completed' ? 'green.100' :
+                            localTask.status === 'pending' ? 'yellow.100' :
+                              localTask.status === 'running' ? 'blue.100' :
+                                localTask.status === 'denied' ? 'red.100' : 'gray.100'
+                        }
+                        color={
+                          localTask.status === 'completed' ? 'green.700' :
+                            localTask.status === 'pending' ? 'yellow.700' :
+                              localTask.status === 'running' ? 'blue.700' :
+                                localTask.status === 'denied' ? 'red.700' : 'gray.700'
+                        }
+                        px={2}
+                        py={1}
+                        borderRadius="md"
+                        justifyContent="center"
+                        fontWeight="medium"
+                        fontSize="xs"
+                        textTransform="uppercase"
+                        mr={2}
+                      >
+                        {localTask.status}
+                      </Flex>
+                      <IconButton
+                        aria-label="Refresh task"
+                        icon={<FaSync />}
+                        size="xs"
+                        variant="ghost"
+                        loading={isRefreshing}
+                        onClick={() => localTask?.id && fetchTaskStatus(localTask.id)}
+                        ml={1}
+                      />
+                    </>
+                  ) : (
+                    <Text fontSize="xs" color="gray.500">No task selected</Text>
+                  )}
                 </Flex>
+              </Flex>
 
-                <Box mb={2}>
-                  <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>TASK ID</Text>
-                  <Text
-                    fontSize="xs"
-                    fontFamily="mono"
-                    color="gray.700"
-                    wordBreak="break-all"
-                    cursor="pointer"
+              <Box mb={2}>
+                <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>TASK ID</Text>
+                <Text
+                  fontSize="xs"
+                  fontFamily="mono"
+                  color="gray.700"
+                  wordBreak="break-all"
+                  cursor="pointer"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      const textArea = document.createElement('textarea');
+                      textArea.value = localTask.id;
+                      textArea.style.position = 'fixed';
+                      textArea.style.left = '-999999px';
+                      textArea.style.top = '-999999px';
+                      document.body.appendChild(textArea);
+                      textArea.focus();
+                      textArea.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(textArea);
+                      toast.info("Task ID copied to clipboard", { autoClose: 2000 });
+                    }
+                  }}
+                  title="Click to copy ID"
+                >
+                  {localTask.id}
+                </Text>
+              </Box>
+
+              <MotionFlex
+                justify="space-between"
+                mt={2}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
+                <Tooltip content={!localTask ? "No task selected" :
+                  localTask.status === 'approved' || localTask.status === 'denied' ?
+                    `Task already ${localTask.status}` : isProcessingAction ? "Processing..." : "Approve task"}>
+                  <IconButton
+                    aria-label="Approve task"
+                    bg="transparent"
+                    color={!localTask ? 'gray.300' :
+                      localTask.status === 'approved' ? 'green.300' :
+                        localTask.status === 'denied' ? 'gray.300' : 'green.500'}
+                    _hover={{
+                      bg: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                        'transparent' : 'green.50',
+                      color: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                        undefined : 'green.600'
+                    }}
+                    _active={{
+                      bg: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                        'transparent' : 'green.100'
+                    }}
+                    _focus={{
+                      boxShadow: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                        'none' : '0 0 0 3px rgba(72, 187, 120, 0.3)'
+                    }}
                     onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        const textArea = document.createElement('textarea');
-                        textArea.value = localTask.id;
-                        textArea.style.position = 'fixed';
-                        textArea.style.left = '-999999px';
-                        textArea.style.top = '-999999px';
-                        document.body.appendChild(textArea);
-                        textArea.focus();
-                        textArea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textArea);
-                        toast.info("Task ID copied to clipboard", { autoClose: 2000 });
+                      if (localTask && localTask.status !== 'approved' && localTask.status !== 'denied' && !isProcessingAction) {
+                        handleTaskAction(localTask, 'approve');
                       }
                     }}
-                    title="Click to copy ID"
+                    cursor={!localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                      'not-allowed' : 'pointer'}
+                    size="md"
+                    flex="1"
+                    mr={2}
+                    loading={isProcessingAction && localTask?.status !== 'approved' && localTask?.status !== 'denied'}
                   >
-                    {localTask.id}
-                  </Text>
-                </Box>
-
-                <MotionFlex
-                  justify="space-between"
-                  mt={2}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                >
-                  <Tooltip content={localTask.status === 'approved' || localTask.status === 'denied' ?
-                    `Task already ${localTask.status}` : "Approve task"}>
-                    <IconButton
-                      aria-label="Approve task"
-                      bg="transparent"
-                      color={localTask.status === 'approved' ? 'green.300' :
-                        localTask.status === 'denied' ? 'gray.300' : 'green.500'}
-                      _hover={{
-                        bg: localTask.status === 'approved' || localTask.status === 'denied' ?
-                          'transparent' : 'green.50',
-                        color: localTask.status === 'approved' || localTask.status === 'denied' ?
-                          undefined : 'green.600'
-                      }}
-                      _active={{
-                        bg: localTask.status === 'approved' || localTask.status === 'denied' ?
-                          'transparent' : 'green.100'
-                      }}
-                      _focus={{
-                        boxShadow: localTask.status === 'approved' || localTask.status === 'denied' ?
-                          'none' : '0 0 0 3px rgba(72, 187, 120, 0.3)'
-                      }}
-                      onClick={() => {
-                        if (localTask.status !== 'approved' && localTask.status !== 'denied') {
-                          handleTaskAction(localTask, 'approve');
-                        }
-                      }}
-                      cursor={localTask.status === 'approved' || localTask.status === 'denied' ?
-                        'not-allowed' : 'pointer'}
-                      size="md"
-                      flex="1"
-                      mr={2}
-                    >
-                      <Icon as={FaCheck} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip content={localTask.status === 'approved' || localTask.status === 'denied' ?
-                    `Task already ${localTask.status}` : "Deny task"}>
-                    <IconButton
-                      aria-label="Deny task"
-                      bg="transparent"
-                      color={localTask.status === 'denied' ? 'red.300' :
+                    <Icon as={FaCheck} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content={!localTask ? "No task selected" :
+                  localTask.status === 'approved' || localTask.status === 'denied' ?
+                    `Task already ${localTask.status}` : isProcessingAction ? "Processing..." : "Deny task"}>
+                  <IconButton
+                    aria-label="Deny task"
+                    bg="transparent"
+                    color={!localTask ? 'gray.300' :
+                      localTask.status === 'denied' ? 'red.300' :
                         localTask.status === 'approved' ? 'gray.300' : 'red.500'}
-                      _hover={{
-                        bg: localTask.status === 'approved' || localTask.status === 'denied' ?
-                          'transparent' : 'red.50',
-                        color: localTask.status === 'approved' || localTask.status === 'denied' ?
-                          undefined : 'red.600'
-                      }}
-                      _active={{
-                        bg: localTask.status === 'approved' || localTask.status === 'denied' ?
-                          'transparent' : 'red.100'
-                      }}
-                      _focus={{
-                        boxShadow: localTask.status === 'approved' || localTask.status === 'denied' ?
-                          'none' : '0 0 0 3px rgba(245, 101, 101, 0.3)'
-                      }}
-                      onClick={() => {
-                        if (localTask.status !== 'approved' && localTask.status !== 'denied') {
-                          handleTaskAction(localTask, 'deny');
-                        }
-                      }}
-                      cursor={localTask.status === 'approved' || localTask.status === 'denied' ?
-                        'not-allowed' : 'pointer'}
-                      size="md"
-                      flex="1"
-                    >
-                      <Icon as={FaTimes} />
-                    </IconButton>
-                  </Tooltip>
-                </MotionFlex>
-              </Flex>
-            ) : (
-              <Text fontSize="sm" color="gray.600" textAlign="center">
-                No task selected
-              </Text>
-            )}
+                    _hover={{
+                      bg: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                        'transparent' : 'red.50',
+                      color: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                        undefined : 'red.600'
+                    }}
+                    _active={{
+                      bg: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                        'transparent' : 'red.100'
+                    }}
+                    _focus={{
+                      boxShadow: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                        'none' : '0 0 0 3px rgba(245, 101, 101, 0.3)'
+                    }}
+                    onClick={() => {
+                      if (localTask && localTask.status !== 'approved' && localTask.status !== 'denied' && !isProcessingAction) {
+                        handleTaskAction(localTask, 'deny');
+                      }
+                    }}
+                    cursor={!localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
+                      'not-allowed' : 'pointer'}
+                    size="md"
+                    flex="1"
+                    loading={isProcessingAction && localTask?.status !== 'approved' && localTask?.status !== 'denied'}
+                  >
+                    <Icon as={FaTimes} />
+                  </IconButton>
+                </Tooltip>
+              </MotionFlex>
+            </Flex>
           </Box>
         </Flex>
       </Flex>

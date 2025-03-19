@@ -1,14 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-    user: process.env.PGUSER,
-    host: process.env.PGHOST,
-    database: process.env.PGDATABASE,
-    password: process.env.PGPASSWORD,
-    port: parseInt(process.env.PGPORT || '5432'),
-});
-  
+import db from '@/lib/db';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -17,27 +8,31 @@ export async function GET(request: Request) {
     const offset = (page - 1) * limit;
 
     try {
-        const result = await pool.query(`
-            SELECT 
+        const result = await db.raw(`
+            select 
                 cs.id, 
                 cs.created_at,
-                json_agg(
-                    json_build_object(
-                        'id', m.id,
-                        'timestamp', m.timestamp,
-                        'role', m.role,
-                        'value', m.value
-                    ) ORDER BY m.timestamp DESC
-                ) AS messages,
-                COUNT(m.id) AS message_count
-            FROM chat_rooms cs
-            LEFT JOIN messages m ON cs.id = m.room_id
-            GROUP BY cs.id
-            ORDER BY cs.created_at DESC
-            LIMIT $1 OFFSET $2
+                coalesce(
+                    (select json_agg(
+                        json_build_object(
+                            'id', m.id,
+                            'timestamp', m.timestamp,
+                            'role', m.role,
+                            'value', m.value
+                        ) order by m.timestamp desc
+                    )
+                    from messages m
+                    where m.room_id = cs.id
+                    limit 50), '[]'::json
+                ) as messages,
+                (select count(*) from messages m where m.room_id = cs.id) as message_count
+            from chat_rooms cs
+            order by cs.created_at desc
+            limit ? offset ?
         `, [limit, offset]);
         
-        const rooms = result.rows.map(row => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rooms = result.rows.map((row: { id: string; created_at: string; messages: any[]; message_count: number }) => ({
             id: row.id,
             created_at: row.created_at,
             messages: row.messages.filter((m: { id: string }) => m.id !== null),

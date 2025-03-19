@@ -10,7 +10,7 @@ import {
     FaBook,
     FaBookOpen
 } from 'react-icons/fa';
-import { AuthPopover } from './popover/auth_popover';
+import { AuthPopover } from './auth/auth_popover';
 import { memo, useState } from 'react';
 
 interface NavbarProps {

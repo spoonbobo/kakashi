@@ -1,13 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-    user: process.env.PGUSER,
-    host: process.env.PGHOST,
-    database: process.env.PGDATABASE,
-    password: process.env.PGPASSWORD,
-    port: parseInt(process.env.PGPORT || '5432'),
-});
+import db from '@/lib/db';
 
 export async function GET(request: Request) {
     try {
@@ -17,70 +9,40 @@ export async function GET(request: Request) {
         const categories = searchParams.get('categories')?.split(',') || [];
         const startDate = searchParams.get('startDate');
         const endDate = searchParams.get('endDate');
-        const status = searchParams.get('status'); // 'pending', 'running', 'completed', 'failed'
+        const status = searchParams.get('status');
         const limit = parseInt(searchParams.get('limit') || '10');
         const offset = parseInt(searchParams.get('offset') || '0');
         
-        console.log('API received params:', { 
-            categories, 
-            startDate, 
-            endDate, 
-            status, 
-            limit, 
-            offset 
-        });
-        
-        // Build query with filters
-        let query = `
-            SELECT *
-            FROM agent_task
-            WHERE 1=1
-        `;
-        
-        const queryParams: any[] = [];
-        let paramIndex = 1;
+        // Build query with Knex
+        const query = db('agent_task')
+            .select('*')
+            .orderBy('created_at', 'desc')
+            .limit(limit)
+            .offset(offset);
         
         // Add category filter if provided
         if (categories.length > 0) {
-            query += ` AND role = ANY($${paramIndex})`;
-            queryParams.push(categories);
-            paramIndex++;
+            query.whereIn('role', categories);
         }
         
         // Add date range filters if provided
         if (startDate) {
-            query += ` AND created_at >= $${paramIndex}`;
-            queryParams.push(startDate);
-            paramIndex++;
+            query.where('created_at', '>=', startDate);
         }
         
         if (endDate) {
-            query += ` AND created_at <= $${paramIndex}`;
-            queryParams.push(endDate);
-            paramIndex++;
+            query.where('created_at', '<=', endDate);
         }
         
         // Add status filter if provided
         if (status) {
-            query += ` AND status = $${paramIndex}`;
-            queryParams.push(status);
-            paramIndex++;
+            query.where('status', status);
         }
-        
-        // Add ordering and pagination
-        query += `
-            ORDER BY created_at DESC
-            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-        `;
-        queryParams.push(limit.toString(), offset.toString());
-        
-        console.log('Executing query:', query);
-        console.log('With params:', queryParams);
-        
-        const result = await pool.query(query, queryParams);
-        console.log(`Found ${result.rows.length} tasks`);
+                
+        const result = await query;
+        console.log(`Found ${result.length} tasks`);
             
-        return NextResponse.json(result.rows, { status: 200 });
+        return NextResponse.json(result, { status: 200 });
     } catch (error) {
         console.error('Error fetching tasks:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

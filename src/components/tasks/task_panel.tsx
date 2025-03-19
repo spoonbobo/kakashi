@@ -22,7 +22,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
   const [tasks, setTasks] = useState<any[]>([]);
   // Track newly added tasks for animation
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set());
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, authChecked } = useAuth();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tasksRef = useRef<any[]>([]);  // Reference to track tasks between renders
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -210,8 +210,15 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
     }
   }, [isAuthenticated]);
 
-  if (!isAuthenticated) {
-    return null;
+  if (authChecked && !isAuthenticated) {
+    return (
+      <Box p={4} textAlign="center" borderRadius="md" bg="gray.50" my={4}>
+        <Text fontWeight="medium" color="gray.700">Please log in to view tasks</Text>
+        <Text fontSize="sm" color="gray.500" mt={1}>
+          Your session may have expired or you've been logged out
+        </Text>
+      </Box>
+    );
   }
 
   return (

@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { Tooltip } from "@/components/tooltip"
-import { Box, Text, Input, Flex, VStack, IconButton, Spinner, Center } from "@chakra-ui/react";
+import { Box, Text, Flex, VStack, Spinner, Center } from "@chakra-ui/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaPaperPlane } from "react-icons/fa";
 import { useAuth } from "@/auth/context";
 import { v4 as uuidv4 } from 'uuid';
+import { ChatInput } from "@/components/chat/chat_input";
 
 const MotionBox = motion.create(Box);
 const MotionFlex = motion.create(Flex);
@@ -22,12 +22,6 @@ interface ChatMessage {
 interface User {
   id: string;
   username: string;
-}
-
-interface MentionState {
-  isActive: boolean;
-  startPosition: number;
-  searchText: string;
 }
 
 const LOCAL_STORAGE_KEY_PREFIX = 'chat_messages_';
@@ -63,48 +57,9 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     timestamp: new Date()
   }), []);
 
-  // Add mention state
-  const [mentionState, setMentionState] = useState<MentionState>({
-    isActive: false,
-    startPosition: 0,
-    searchText: ''
-  });
-
   const [agents] = useState<User[]>([
     { id: 'agent', username: 'agent' },
   ]);
-
-  // Animation variants for mention suggestions
-  const mentionDropdownVariants = {
-    hidden: { opacity: 0, y: 10, height: 0 },
-    visible: { opacity: 1, y: 0, height: 'auto', transition: { staggerChildren: 0.05 } },
-    exit: { opacity: 0, y: 10, height: 0 }
-  };
-
-  const mentionItemVariants = {
-    hidden: { opacity: 0, x: -10 },
-    visible: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: 10 }
-  };
-
-  // Modify to exclude current user and include specified agents
-  const getMentionSuggestions = useCallback(() => {
-    if (!mentionState.isActive) return [];
-
-    // Filter out current user and include only other users plus dummy agents
-    const filteredUsers = users.filter(user =>
-      user.username !== currentUser?.username &&
-      user.id !== currentUser?.id?.toString()
-    );
-
-    const allUsers = [...filteredUsers, ...agents];
-    const uniqueUsers = Array.from(new Map(allUsers.map(user => [user.username, user])).values());
-
-    return mentionState.searchText.trim() === ''
-      ? uniqueUsers
-      : uniqueUsers.filter(user =>
-        user.username.toLowerCase().includes(mentionState.searchText.toLowerCase()));
-  }, [users, agents, mentionState, currentUser]);
 
   // Load cached messages on mount
   useEffect(() => {
@@ -140,7 +95,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     console.log("window.location.hostname", window.location.hostname);
 
     const socket = io(window.location.hostname, {
-      path: '/socket.io/',
+      path: '/socket.io/chat/',
       auth: {
         token: currentUser.token,
         roomId: roomIdRef.current
@@ -154,6 +109,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
+      console.log("socket.data.user");
       setConnectionError(null);
       setLoading(false);
     });
@@ -204,76 +160,129 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     };
   }, [isAuthenticated, currentUser, retryCount, createSystemMessage]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // Memoize message rendering function to prevent unnecessary re-renders
+  const renderMessage = useCallback((msg: ChatMessage) => {
+    const isCurrentUser = msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString();
+    const isToolCall = msg.is_tool_call;
+    const isSystem = msg.sender === 'system';
 
-  // const handleRetryConnection = useCallback(() => setRetryCount(prev => prev + 1), []);
-  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setMessage(newValue);
+    return (
+      <MotionFlex
+        key={msg.id}
+        maxWidth="80%"
+        alignSelf={isSystem ? 'center' : isCurrentUser ? 'flex-end' : 'flex-start'}
+        variants={messageVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={{ duration: 0.3 }}
+        mb={2}
+      >
+        <Tooltip content={new Date(msg.timestamp).toLocaleString([], {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        })}>
+          <Box
+            bg={isSystem ? "gray.200" : isCurrentUser ? "blue.500" : "gray.100"}
+            color={isSystem ? "gray.600" : isCurrentUser ? "white" : "gray.800"}
+            px={4}
+            py={isSystem ? 1 : 2}
+            borderRadius={isSystem ? "md" : "lg"}
+            boxShadow={isSystem ? "none" : "sm"}
+            maxWidth={isSystem ? "70%" : "100%"}
+            width={isSystem ? "auto" : undefined}
+            textAlign={isSystem ? "center" : "left"}
+            borderWidth={isSystem ? "1px" : "0"}
+            borderColor={isSystem ? "gray.300" : "transparent"}
+            mx={isSystem ? "auto" : undefined}
+          >
+            {!isSystem && <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>}
+            <Text fontSize={isSystem ? "sm" : "md"} fontStyle={isSystem ? "italic" : "normal"}>
+              {isToolCall
+                ? `${msg.sender} initiated task ${msg.id}.`
+                : msg.text}
+            </Text>
+            {!isSystem && <Text fontSize="xs" textAlign="right">
+              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+            </Text>}
+          </Box>
+        </Tooltip>
+      </MotionFlex>
+    );
+  }, [currentUser?.username, currentUser?.id]);
 
-    // Handle @ mentions
-    const lastAtIndex = newValue.lastIndexOf('@');
-    if (lastAtIndex >= 0 && (lastAtIndex === 0 || newValue[lastAtIndex - 1] === ' ')) {
-      // Extract search text after @
-      const searchText = newValue.substring(lastAtIndex + 1);
-
-      // If there's a space after the search text, disable mention
-      if (searchText.includes(' ')) {
-        setMentionState({ isActive: false, startPosition: 0, searchText: '' });
-      } else {
-        setMentionState({
-          isActive: true,
-          startPosition: lastAtIndex,
-          searchText: searchText
-        });
-      }
-    } else {
-      setMentionState({ isActive: false, startPosition: 0, searchText: '' });
+  // Optimize scrolling behavior
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, []);
 
-  const handleSelectMention = useCallback((username: string) => {
-    const beforeMention = message.substring(0, mentionState.startPosition);
-    const afterMention = message.substring(mentionState.startPosition + mentionState.searchText.length + 1);
+  // Replace the previous useEffect for scrolling with a more efficient one
+  useEffect(() => {
+    // Only scroll if we're already near the bottom or if the last message is from the current user
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
+      const lastMessage = messages[messages.length - 1];
+      const isOwnMessage = lastMessage && (lastMessage.sender === currentUser?.username || lastMessage.sender === currentUser?.id?.toString());
 
-    setMessage(`${beforeMention}@${username} ${afterMention}`);
-    setMentionState({ isActive: false, startPosition: 0, searchText: '' });
-  }, [message, mentionState]);
+      if (isNearBottom || isOwnMessage) {
+        scrollToBottom();
+      }
+    }
+  }, [messages, currentUser?.username, currentUser?.id, scrollToBottom]);
 
-  const accessMCP = useCallback((agentName: string, messageText: string) => {
-    const messageHistory = messages.slice(-10).map(msg => ({
-      sender: msg.sender,
-      text: msg.text,
-      timestamp: msg.timestamp
-    }));
+  const accessMCP = useCallback(async (agentName: string, messageText: string) => {
+    // Add error handling and prevent UI blocking
+    try {
+      const messageHistory = messages.slice(-10).map(msg => ({
+        sender: msg.sender,
+        text: msg.text,
+        timestamp: msg.timestamp
+      }));
 
-    const contextData = {
-      sender: currentUser?.username,
-      text: messageText,
-      mentioned_agent: agentName,
-      history: messageHistory,
-      room_id: roomIdRef.current
-    };
+      const contextData = {
+        sender: currentUser?.username,
+        text: messageText,
+        mentioned_agent: agentName,
+        history: messageHistory,
+        room_id: roomIdRef.current
+      };
 
-    fetch(`/mcp/api/app/access`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(contextData)
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => console.log('Agent response:', data))
-      .catch(error => {
-        console.error('Error accessing agent:', error);
-        // More detailed error logging
-        console.error('Error details:', error.message);
+      // Set a timeout to prevent long-running requests from blocking the UI
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const response = await fetch(`/mcp/api/app/access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contextData),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Agent response:', data);
+      return data;
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.warn('Agent request timed out');
+      } else {
+        console.error('Error accessing MCP:', error);
+      }
+      // Don't rethrow - we don't want to crash the chat experience
+    }
   }, [messages, currentUser?.username]);
 
   const sendMessage = useCallback(() => {
@@ -290,10 +299,6 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
       setMessage("");
     }
   }, [message, currentUser?.username, accessMCP]);
-
-  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Enter") sendMessage();
-  }, [sendMessage]);
 
   if (loading) return <Center height="100%"><Spinner size="xl" color="blue.500" /></Center>;
   if (!isAuthenticated) return <Box p={4}>Please log in to join the chat</Box>;
@@ -318,130 +323,20 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
       <MotionBox flex="1" overflow="auto" p={4} ref={scrollContainerRef}>
         <VStack align="stretch">
           <AnimatePresence initial={false}>
-            {messages.map((msg) => {
-              const isCurrentUser = msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString();
-              const isToolCall = msg.is_tool_call;
-              const isSystem = msg.sender === 'system';
-              return (
-                <MotionFlex
-                  key={msg.id}
-                  maxWidth="80%"
-                  alignSelf={isSystem ? 'center' : isCurrentUser ? 'flex-end' : 'flex-start'}
-                  variants={messageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={{ duration: 0.3 }}
-                  mb={2}
-                >
-                  <Tooltip content={new Date(msg.timestamp).toLocaleString([], {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                  })}>
-                    <Box
-                      bg={isSystem ? "gray.200" : isCurrentUser ? "blue.500" : "gray.100"}
-                      color={isSystem ? "gray.600" : isCurrentUser ? "white" : "gray.800"}
-                      px={4}
-                      py={isSystem ? 1 : 2}
-                      borderRadius={isSystem ? "md" : "lg"}
-                      boxShadow={isSystem ? "none" : "sm"}
-                      maxWidth={isSystem ? "70%" : "100%"}
-                      width={isSystem ? "auto" : undefined}
-                      textAlign={isSystem ? "center" : "left"}
-                      borderWidth={isSystem ? "1px" : "0"}
-                      borderColor={isSystem ? "gray.300" : "transparent"}
-                      mx={isSystem ? "auto" : undefined}
-                    >
-                      {!isSystem && <Text fontSize="sm" fontWeight="bold">{msg.sender}</Text>}
-                      <Text fontSize={isSystem ? "sm" : "md"} fontStyle={isSystem ? "italic" : "normal"}>
-                        {isToolCall
-                          ? `${msg.sender} initiated task ${msg.id}.`
-                          : msg.text}
-                      </Text>
-                      {!isSystem && <Text fontSize="xs" textAlign="right">
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-                      </Text>}
-                    </Box>
-                  </Tooltip>
-                </MotionFlex>
-              );
-            })}
+            {messages.map(renderMessage)}
           </AnimatePresence>
           <Box ref={messagesEndRef} />
         </VStack>
       </MotionBox>
 
-      <Box p={4} mb="60px">
-        <Flex gap={2} position="relative">
-          <Input
-            placeholder="Type your message..."
-            value={message}
-            onChange={handleMessageChange}
-            onKeyPress={handleKeyPress}
-            borderRadius="full"
-          />
-          <IconButton
-            aria-label="Send"
-            colorScheme="blue"
-            onClick={sendMessage}
-            borderRadius="full"
-          >
-            <FaPaperPlane />
-          </IconButton>
-
-          {/* Mention suggestions dropdown with animations */}
-          <AnimatePresence>
-            {mentionState.isActive && (
-              <MotionBox
-                position="absolute"
-                bottom="100%"
-                left="10px"
-                width="250px"
-                bg="white"
-                borderRadius="md"
-                boxShadow="md"
-                zIndex={10}
-                maxHeight="200px"
-                overflowY="auto"
-                border="1px solid"
-                borderColor="gray.200"
-                variants={mentionDropdownVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                {getMentionSuggestions().length > 0 ? (
-                  getMentionSuggestions().map(user => (
-                    <MotionBox
-                      key={user.id}
-                      p={2}
-                      cursor="pointer"
-                      _hover={{ bg: "gray.100" }}
-                      onClick={() => handleSelectMention(user.username)}
-                      variants={mentionItemVariants}
-                    >
-                      {user.username}
-                    </MotionBox>
-                  ))
-                ) : (
-                  <MotionBox
-                    p={2}
-                    color="gray.500"
-                    variants={mentionItemVariants}
-                  >
-                    No users found
-                  </MotionBox>
-                )}
-              </MotionBox>
-            )}
-          </AnimatePresence>
-        </Flex>
-      </Box>
+      <ChatInput
+        message={message}
+        setMessage={setMessage}
+        sendMessage={sendMessage}
+        users={users}
+        agents={agents}
+        currentUser={currentUser}
+      />
     </Flex>
   );
 });

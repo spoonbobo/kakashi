@@ -22,7 +22,6 @@ const MotionFlex = motion(Flex);
 export const TaskBox = memo<TaskBoxProps>(({
     item,
     onClick,
-    height = "100px",
     isNew = false,
     forceTimeUnderStatus = false,
     preventTextTrimming = false
@@ -37,21 +36,6 @@ export const TaskBox = memo<TaskBoxProps>(({
     const getStatusColor = (status: string) => {
         const colorProps = getStatusColorProps(status);
         return colorProps;
-    };
-
-    // Format the task description to be more concise
-    const formatDescription = (description: string) => {
-        if (!description) return 'No description';
-
-        // Remove tool tags
-        let text = description.replace(/<tools>.*?<\/tools>/g, '');
-
-        // Limit length
-        if (text.length > 100) {
-            text = text.substring(0, 97) + '...';
-        }
-
-        return text;
     };
 
     // Format timestamp to be more compact
@@ -115,7 +99,6 @@ export const TaskBox = memo<TaskBoxProps>(({
             animate="visible"
             variants={containerVariants}
             backgroundColor={isNew ? "blue.50" : "white"}
-            transition="background-color 0.5s ease"
         >
             {forceTimeUnderStatus ? (
                 // Layout with time under status
@@ -130,9 +113,8 @@ export const TaskBox = memo<TaskBoxProps>(({
                             fontWeight="bold"
                             fontSize="sm"
                             flex="1"
-                            noOfLines={2}
+                            truncate
                             lineHeight="1.3"
-                            isTruncated={false} // Disable default truncation
                             css={{
                                 display: '-webkit-box',
                                 WebkitLineClamp: '2',
@@ -177,9 +159,7 @@ export const TaskBox = memo<TaskBoxProps>(({
                     <MotionText
                         fontSize="xs"
                         color="gray.600"
-                        noOfLines={1}
-                        mt="auto"
-                        isTruncated
+                        truncate
                         title={item.task_id} // Show full task ID on hover
                     >
                         {item.task_id}
@@ -198,7 +178,7 @@ export const TaskBox = memo<TaskBoxProps>(({
                             fontWeight="bold"
                             fontSize="sm"
                             flex="1"
-                            noOfLines={2}
+                            truncate
                             css={{
                                 display: '-webkit-box',
                                 WebkitLineClamp: '2',
@@ -234,7 +214,7 @@ export const TaskBox = memo<TaskBoxProps>(({
                             fontSize="xs"
                             color="gray.600"
                             maxWidth="50%"
-                            isTruncated
+                            truncate
                             title={item.task_id} // Show full task ID on hover
                         >
                             {item.task_id}
@@ -254,3 +234,6 @@ export const TaskBox = memo<TaskBoxProps>(({
         </MotionBox>
     );
 });
+
+// Add display name
+TaskBox.displayName = 'TaskBox';

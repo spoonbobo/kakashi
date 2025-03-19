@@ -3,6 +3,7 @@ import { Table, Select, createListCollection } from "@chakra-ui/react";
 import { useAuth } from "@/auth/context";
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getStatusColorProps, useTaskStatusUpdates } from '@/lib/task_status_utils';
 
 const MotionBox = motion(Box);
@@ -24,7 +25,7 @@ interface TasksProps {
 }
 
 export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authChecked } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -166,11 +167,6 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
       );
     };
 
-    // Debounced refresh function to prevent too many API calls
-    const debouncedRefresh = debounce(() => {
-      console.log("[TaskHistory] Debounced refresh triggered");
-      fetchTasks(statusFilter);
-    }, 2000); // 2 second debounce
 
     // Handle force refresh events from TaskLogger
     const handleForceRefresh = (event: CustomEvent) => {
@@ -202,9 +198,11 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
   }, [statusFilter, fetchTasks]);
 
   // Helper function for debouncing
-  const debounce = (func: Function, wait: number) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const debounce = (func: (...args: any[]) => void, wait: number) => {
     let timeout: NodeJS.Timeout | null = null;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (...args: any[]) => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
@@ -234,6 +232,28 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
       console.error("Error applying stored task updates:", e);
     }
   }, [isAuthenticated]);
+
+  // Add a check for authentication status
+  useEffect(() => {
+    if (authChecked && !isAuthenticated) {
+      console.log("User not authenticated, cannot fetch tasks");
+    }
+  }, [authChecked, isAuthenticated]);
+
+  // Only show loading if we're still checking auth or if auth is confirmed and we're loading
+  const showLoading = (!authChecked || (isAuthenticated && loading));
+
+  // Show auth error only after we've confirmed the user isn't authenticated
+  if (authChecked && !isAuthenticated) {
+    return (
+      <Box p={4} textAlign="center" borderRadius="md" bg="gray.50" my={4}>
+        <Text fontWeight="medium" color="gray.700">Please log in to view task history</Text>
+        <Text fontSize="sm" color="gray.500" mt={1}>
+          Your session may have expired or you&apos;ve been logged out
+        </Text>
+      </Box>
+    );
+  }
 
   if (!isAuthenticated) {
     return null;
@@ -383,7 +403,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
         </Flex>
       </Flex>
 
-      {initialLoad && loading ? (
+      {showLoading ? (
         <Spinner size="xl" alignSelf="center" my={8} />
       ) : error ? (
         <Text color="red.500" textAlign="center" my={8}>{error}</Text>
@@ -470,27 +490,27 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
             <Flex gap={1} alignItems="center">
               <Box
                 as="button"
-                isDisabled={currentPage === 1}
                 onClick={() => handlePageChange(1)}
                 px={2} py={1}
                 borderRadius="md"
                 bg={currentPage === 1 ? "gray.100" : "gray.200"}
                 color={currentPage === 1 ? "gray.400" : "gray.700"}
                 _hover={{ bg: currentPage === 1 ? "gray.100" : "gray.300" }}
-                _disabled={{ opacity: 0.5, cursor: "not-allowed" }}
+                aria-disabled={currentPage === 1}
+                pointerEvents={currentPage === 1 ? "none" : "auto"}
               >
                 «
               </Box>
               <Box
                 as="button"
-                isDisabled={currentPage === 1}
                 onClick={() => handlePageChange(currentPage - 1)}
                 px={2} py={1}
                 borderRadius="md"
                 bg={currentPage === 1 ? "gray.100" : "gray.200"}
                 color={currentPage === 1 ? "gray.400" : "gray.700"}
                 _hover={{ bg: currentPage === 1 ? "gray.100" : "gray.300" }}
-                _disabled={{ opacity: 0.5, cursor: "not-allowed" }}
+                aria-disabled={currentPage === 1}
+                pointerEvents={currentPage === 1 ? "none" : "auto"}
               >
                 ‹
               </Box>
@@ -501,7 +521,6 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
 
               <Box
                 as="button"
-                isDisabled={currentPage === totalPages || totalPages === 0}
                 onClick={() => handlePageChange(currentPage + 1)}
                 px={2} py={1}
                 borderRadius="md"
@@ -509,12 +528,13 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
                 color={currentPage === totalPages || totalPages === 0 ? "gray.400" : "gray.700"}
                 _hover={{ bg: currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.300" }}
                 _disabled={{ opacity: 0.5, cursor: "not-allowed" }}
+                aria-disabled={currentPage === totalPages || totalPages === 0}
+                pointerEvents={currentPage === totalPages || totalPages === 0 ? "none" : "auto"}
               >
                 ›
               </Box>
               <Box
                 as="button"
-                isDisabled={currentPage === totalPages || totalPages === 0}
                 onClick={() => handlePageChange(totalPages)}
                 px={2} py={1}
                 borderRadius="md"
@@ -522,6 +542,8 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
                 color={currentPage === totalPages || totalPages === 0 ? "gray.400" : "gray.700"}
                 _hover={{ bg: currentPage === totalPages || totalPages === 0 ? "gray.100" : "gray.300" }}
                 _disabled={{ opacity: 0.5, cursor: "not-allowed" }}
+                aria-disabled={currentPage === totalPages || totalPages === 0}
+                pointerEvents={currentPage === totalPages || totalPages === 0 ? "none" : "auto"}
               >
                 »
               </Box>

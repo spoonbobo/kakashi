@@ -1,27 +1,33 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-    user: process.env.PGUSER,
-    host: process.env.PGHOST,
-    database: process.env.PGDATABASE,
-    password: process.env.PGPASSWORD,
-    port: parseInt(process.env.PGPORT || '5432'),
-});
+import db from '@/lib/db';
 
 export async function POST(request: Request) {
     try {
-        const { summarization, role, description, room_id, task_id, is_tool_call = false, tools_called = null } = await request.json();
+        const { 
+            summarization, 
+            role, 
+            description, 
+            room_id, 
+            task_id, 
+            is_tool_call = false, 
+            tools_called = null 
+        } = await request.json();
         
-        // Properly format tools_called as JSONB
-        const toolsCalledJson = tools_called ? JSON.stringify(tools_called) : null;
+        const result = await db('agent_task')
+            .insert({
+                summarization,
+                role,
+                description,
+                room_id,
+                task_id,
+                status: 'pending',
+                result: null,
+                is_tool_call,
+                tools_called: tools_called ? JSON.stringify(tools_called) : null
+            })
+            .returning('*');
         
-        const result = await pool.query(`
-            INSERT INTO agent_task (summarization, role, description, room_id, task_id, status, result, is_tool_call, tools_called) 
-            VALUES ($1, $2, $3, $4, $5, 'pending', null, $6, $7::jsonb)
-        `, [summarization, role, description, room_id, task_id, is_tool_call, toolsCalledJson]);
-        
-        return NextResponse.json({ success: true, rows: result.rows }, { status: 200 });
+        return NextResponse.json({ success: true, rows: result }, { status: 200 });
     } catch (error) {
         console.error('Error creating task:', error);
         return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });

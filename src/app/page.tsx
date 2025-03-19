@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import { Navbar } from '../components/navbar';
-import WelcomeBox from '../components/box/welcome_box';
+import WelcomeBox from '../components/greeting/welcome_box';
 import AgentTaskPanel from '../components/tasks/task_panel';
 import { ResizableLayoutV } from '@/components/stretch/resizeable_layoutV';
 import { ResizableLayoutH } from '@/components/stretch/resizeable_layoutH';
@@ -12,7 +12,7 @@ import { Tasks } from '../components/tasks/task_history';
 import TaskLogger from '../components/tasks/task_logger';
 import ChatRoom from '../components/chat/chat_room';
 import { KnowledgeBase } from '../components/kb/knowledge_base';
-import { Notifications } from '../components/alert/notifications';
+import { NotifyPanel } from '../components/alert/notify_panel';
 import "./globals.css"
 
 
@@ -177,8 +177,8 @@ export default function Home() {
           }
           rightComponent={
             <ResizableLayoutH
-              topComponent={<AgentTaskPanel title="Recent Tasks" onTaskSelect={setSelectedTask} />}
-              bottomComponent={<Notifications />}
+              bottomComponent={<AgentTaskPanel title="Recent Tasks" onTaskSelect={setSelectedTask} />}
+              topComponent={<NotifyPanel />}
             />}
           initialLeftWidth="75%"
         />

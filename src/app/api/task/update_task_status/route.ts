@@ -1,18 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-    user: process.env.PGUSER,
-    host: process.env.PGHOST,
-    database: process.env.PGDATABASE,
-    password: process.env.PGPASSWORD,
-    port: parseInt(process.env.PGPORT || '5432'),
-});
+import db from '@/lib/db';
 
 export async function POST(request: Request) {
     try {
         const { taskId, status, startTime } = await request.json();
-        console.log("req.body", request.body);
+        
         if (!taskId || !status) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
@@ -22,32 +14,25 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
         }
         
-        const client = await pool.connect();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updateData: Record<string, any> = { status };
         
-        try {
-            // If status is approved, update both status and start_time
-            // If denied, just update status
-            let query, values;
-            
-            if (status === 'approved' && startTime) {
-                query = 'UPDATE agent_task SET status = $1, start_time = $2 WHERE task_id = $3 RETURNING *';
-                values = [status, startTime, taskId];
-            } else {
-                query = 'UPDATE agent_task SET status = $1 WHERE task_id = $2 RETURNING *';
-                values = [status, taskId];
-            }
-            
-            const result = await client.query(query, values);
-            
-            if (result.rows.length === 0) {
-                return NextResponse.json({ error: 'Task not found' }, { status: 404 });
-            }
-            
-            return NextResponse.json({ success: true, task: result.rows[0] }, { status: 200 });
-            
-        } finally {
-            client.release();
+        // Add start_time if status is approved and startTime is provided
+        if (status === 'approved' && startTime) {
+            updateData.start_time = startTime;
         }
+        
+        // Update the task using Knex
+        const result = await db('agent_task')
+            .where('task_id', taskId)
+            .update(updateData)
+            .returning('*');
+        
+        if (result.length === 0) {
+            return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+        }
+        
+        return NextResponse.json({ success: true, task: result[0] }, { status: 200 });
         
     } catch (error) {
         console.error('Error updating task status:', error);
