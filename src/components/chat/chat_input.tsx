@@ -18,21 +18,14 @@ interface ChatInputProps {
     sendMessage: () => void;
     users: User[];
     agents: User[];
-    currentUser?: { username?: string; id?: string };
+    currentUser: {
+        id?: string;
+        username?: string;
+        token?: string;
+        tokenCreatedAt?: number;
+    } | null;
 }
 
-// Animation variants for mention suggestions
-const mentionDropdownVariants = {
-    hidden: { opacity: 0, y: 10, height: 0 },
-    visible: { opacity: 1, y: 0, height: 'auto', transition: { staggerChildren: 0.05 } },
-    exit: { opacity: 0, y: 10, height: 0 }
-};
-
-const mentionItemVariants = {
-    hidden: { opacity: 0, x: -10 },
-    visible: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: 10 }
-};
 
 export const ChatInput: React.FC<ChatInputProps> = ({
     message,
@@ -67,13 +60,38 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 user.username.toLowerCase().includes(mentionState.searchText.toLowerCase()));
     }, [users, agents, mentionState, currentUser]);
 
+    // Set selection index to the last item when search text changes
     useEffect(() => {
-        setSelectedSuggestionIndex(0);
-    }, [mentionState.searchText]);
+        const suggestions = getMentionSuggestions();
+        setSelectedSuggestionIndex(Math.max(0, suggestions.length - 1));
+    }, [mentionState.searchText, getMentionSuggestions]);
 
+    // Set selection index to the last item when mention becomes active
     useEffect(() => {
         if (mentionState.isActive) {
-            setSelectedSuggestionIndex(0);
+            const suggestions = getMentionSuggestions();
+            setSelectedSuggestionIndex(Math.max(0, suggestions.length - 1));
+        }
+    }, [mentionState.isActive, getMentionSuggestions]);
+
+    // Prevent scrolling when mention dropdown is active
+    useEffect(() => {
+        if (mentionState.isActive) {
+            // Prevent scrolling on the parent container
+            const parentElement = document.querySelector('[data-scroll-container="true"]');
+            if (parentElement) {
+                parentElement.setAttribute('style', 'overflow: hidden;');
+            }
+
+            // Also prevent horizontal scrolling on the body
+            document.body.style.overflowX = 'hidden';
+
+            return () => {
+                if (parentElement) {
+                    parentElement.setAttribute('style', 'overflow: auto;');
+                }
+                document.body.style.overflowX = '';
+            };
         }
     }, [mentionState.isActive]);
 
@@ -145,17 +163,23 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     onChange={handleMessageChange}
                     onKeyDown={handleKeyPress}
                     borderRadius="full"
+                    borderColor="gray.200"
+                    _focus={{
+                        borderColor: "blue.300",
+                        boxShadow: "0 0 0 1px rgba(66, 153, 225, 0.3)"
+                    }}
                 />
                 <IconButton
                     aria-label="Send"
                     colorScheme="blue"
                     onClick={sendMessage}
                     borderRadius="full"
+                    disabled={!message.trim()}
                 >
                     <FaPaperPlane />
                 </IconButton>
 
-                {/* Mention suggestions dropdown with animations */}
+                {/* Mention suggestions dropdown */}
                 <AnimatePresence>
                     {mentionState.isActive && (
                         <MotionBox
@@ -165,13 +189,33 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                             width="250px"
                             bg="white"
                             borderRadius="md"
-                            boxShadow="md"
-                            zIndex={10}
+                            boxShadow="lg"
+                            zIndex={1000}
                             maxHeight="200px"
                             overflowY="auto"
                             border="1px solid"
                             borderColor="gray.200"
-                            variants={mentionDropdownVariants}
+                            mb={2}
+                            variants={{
+                                hidden: { opacity: 0, y: 10, scale: 0.95 },
+                                visible: {
+                                    opacity: 1,
+                                    y: 0,
+                                    scale: 1,
+                                    transition: {
+                                        type: "spring",
+                                        stiffness: 500,
+                                        damping: 30,
+                                        staggerChildren: 0.03
+                                    }
+                                },
+                                exit: {
+                                    opacity: 0,
+                                    y: 10,
+                                    scale: 0.95,
+                                    transition: { duration: 0.2 }
+                                }
+                            }}
                             initial="hidden"
                             animate="visible"
                             exit="exit"
@@ -183,10 +227,33 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                                         p={2}
                                         cursor="pointer"
                                         bg={index === selectedSuggestionIndex ? "blue.100" : "transparent"}
-                                        _hover={{ bg: index === selectedSuggestionIndex ? "blue.100" : "gray.100" }}
+                                        _hover={{ bg: "gray.100" }}
                                         onClick={() => handleSelectMention(user.username)}
-                                        variants={mentionItemVariants}
+                                        variants={{
+                                            hidden: { opacity: 0, x: -5 },
+                                            visible: { opacity: 1, x: 0 },
+                                            exit: { opacity: 0, x: 5 }
+                                        }}
+                                        display="flex"
+                                        alignItems="center"
+                                        borderBottom={index < getMentionSuggestions().length - 1 ? "1px solid" : "none"}
+                                        borderColor="gray.100"
                                     >
+                                        <Box
+                                            borderRadius="full"
+                                            bg={user.username.startsWith('agent') ? "green.100" : "blue.100"}
+                                            color={user.username.startsWith('agent') ? "green.700" : "blue.700"}
+                                            p={1}
+                                            mr={2}
+                                            fontSize="xs"
+                                            width="24px"
+                                            height="24px"
+                                            display="flex"
+                                            alignItems="center"
+                                            justifyContent="center"
+                                        >
+                                            {user.username[0].toUpperCase()}
+                                        </Box>
                                         {user.username}
                                     </MotionBox>
                                 ))
@@ -194,7 +261,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                                 <MotionBox
                                     p={2}
                                     color="gray.500"
-                                    variants={mentionItemVariants}
+                                    variants={{
+                                        hidden: { opacity: 0 },
+                                        visible: { opacity: 1 },
+                                        exit: { opacity: 0 }
+                                    }}
+                                    textAlign="center"
                                 >
                                     No users found
                                 </MotionBox>

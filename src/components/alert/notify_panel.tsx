@@ -37,13 +37,6 @@ export const NotifyPanel = () => {
         critical: "red.300"
     };
 
-    // Status colors for badges - making these lighter
-    const statusColors = {
-        new: "red.300",
-        acknowledged: "yellow.300",
-        resolved: "green.300"
-    };
-
     useEffect(() => {
         console.log('NotifyPanel component rendering');
         if (!isAuthenticated) return;

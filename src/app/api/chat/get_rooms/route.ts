@@ -8,27 +8,35 @@ export async function GET(request: Request) {
     const offset = (page - 1) * limit;
 
     try {
+        // First get the total count
+        const countResult = await db.raw(`
+            SELECT COUNT(*) AS total FROM chat_rooms
+        `);
+        
+        const total = parseInt(countResult.rows[0].total);
+        
+        // Then get the paginated rooms
         const result = await db.raw(`
-            select 
+            SELECT 
                 cs.id, 
                 cs.created_at,
-                coalesce(
-                    (select json_agg(
+                COALESCE(
+                    (SELECT json_agg(
                         json_build_object(
                             'id', m.id,
                             'timestamp', m.timestamp,
                             'role', m.role,
                             'value', m.value
-                        ) order by m.timestamp desc
+                        ) ORDER BY m.timestamp DESC
                     )
-                    from messages m
-                    where m.room_id = cs.id
-                    limit 50), '[]'::json
-                ) as messages,
-                (select count(*) from messages m where m.room_id = cs.id) as message_count
-            from chat_rooms cs
-            order by cs.created_at desc
-            limit ? offset ?
+                    FROM messages m
+                    WHERE m.room_id = cs.id
+                    LIMIT 1), '[]'::json
+                ) AS messages,
+                (SELECT COUNT(*) FROM messages m WHERE m.room_id = cs.id) AS message_count
+            FROM chat_rooms cs
+            ORDER BY cs.created_at DESC
+            LIMIT ? OFFSET ?
         `, [limit, offset]);
         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,7 +47,7 @@ export async function GET(request: Request) {
             message_count: row.message_count
         }));
 
-        return NextResponse.json({ rooms }, { status: 200 });
+        return NextResponse.json({ rooms, total }, { status: 200 });
     } catch (error) {
         console.error('Error fetching rooms:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -17,3 +17,10 @@ export interface MentionState {
   startPosition: number;
   searchText: string;
 }
+
+export interface Room {
+  id: string;
+  created_at: string;
+  messages: ChatMessage[];
+  message_count: number;
+}

@@ -6,11 +6,16 @@ import {
   Flex,
   Badge,
   Spinner,
+  Select,
+  Portal,
+  createListCollection
 } from "@chakra-ui/react";
 import { useAuth } from "@/auth/context";
 import { motion } from "framer-motion";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { Room } from "@/types/chat";
+
 
 // Custom components to avoid spacing issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,35 +26,32 @@ const HStack = (props: any) => <Flex direction="row" {...props} />;
 const MotionBox = motion.create(Box);
 const ITEMS_PER_PAGE = 10;
 
-interface Message {
-  id: string;
-  timestamp: string;
-  role: string;
-  value: string;
-}
-
-interface Room {
-  id: string;
-  created_at: string;
-  messages: Message[];
-  message_count: number;
-}
-
 export const ListRooms = () => {
   const { isAuthenticated, authChecked } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalRooms, setTotalRooms] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [hasMore, setHasMore] = useState(true);
-  const observer = useRef<IntersectionObserver | null>(null);
 
-  const fetchRooms = async (currentPage: number) => {
+  // Create list collection for per page options
+  const perPageOptions = createListCollection({
+    items: [
+      { label: "10 per page", value: "10" },
+      { label: "20 per page", value: "20" },
+      { label: "50 per page", value: "50" },
+    ],
+  });
+
+  const fetchRooms = async (page: number, limit: number) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/chat/get_rooms?page=${currentPage}&limit=${ITEMS_PER_PAGE}`);
+      const res = await fetch(`/api/chat/get_rooms?page=${page}&limit=${limit}`);
       if (!res.ok) throw new Error("Failed to fetch rooms");
 
       const data = await res.json();
@@ -61,8 +63,9 @@ export const ListRooms = () => {
         return;
       }
 
-      setRooms(prev => currentPage === 1 ? data.rooms : [...prev, ...data.rooms]);
-      setHasMore(data.rooms.length === ITEMS_PER_PAGE);
+      setRooms(data.rooms);
+      setTotalRooms(data.total || data.rooms.length);
+      setHasMore(data.rooms.length === limit);
     } catch (err) {
       console.error("Error fetching rooms:", err);
       setError(err instanceof Error ? err.message : "Failed to load rooms");
@@ -73,22 +76,24 @@ export const ListRooms = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchRooms(page);
+      fetchRooms(currentPage, itemsPerPage);
     }
-  }, [isAuthenticated, page]);
+  }, [isAuthenticated, currentPage, itemsPerPage]);
 
-  const lastRoomRef = useCallback((node: HTMLDivElement) => {
-    if (loading || !hasMore) return;
-    if (observer.current) observer.current.disconnect();
+  const handlePageChange = (newPage: number) => {
+    const totalPages = Math.ceil(totalRooms / itemsPerPage);
+    if (newPage > 0 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
 
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) {
-        setPage(prev => prev + 1);
-      }
-    });
-
-    if (node) observer.current.observe(node);
-  }, [loading, hasMore]);
+  const handleItemsPerPageChange = (values: string[]) => {
+    if (values && values.length > 0) {
+      const newLimit = parseInt(values[0], 10);
+      setItemsPerPage(newLimit);
+      setCurrentPage(1);
+    }
+  };
 
   const handleRoomClick = (room: Room) => {
     setActiveRoom(room.id);
@@ -107,10 +112,46 @@ export const ListRooms = () => {
     );
   }
 
+  const totalPages = Math.ceil(totalRooms / itemsPerPage);
+
   return (
-    <Flex direction="column" width="100%" height="100%" overflow="hidden" px={20}>
+    <Flex direction="column" width="100%" height="100%" overflow="hidden">
       <Flex direction="column" px={6} py={4} borderBottom="1px solid" borderColor="gray.200">
-        <Text fontSize="xl" fontWeight="bold">Rooms</Text>
+        <Flex justify="space-between" align="center">
+          <Text fontSize="xl" fontWeight="bold">Rooms</Text>
+          <Flex align="center" gap={2}>
+            <Text fontSize="sm">Per page:</Text>
+            <Select.Root
+              size="sm"
+              width="120px"
+              collection={perPageOptions}
+              defaultValue={[itemsPerPage.toString()]}
+              onValueChange={(values) => handleItemsPerPageChange(values.value)}
+            >
+              <Select.HiddenSelect />
+              <Select.Control>
+                <Select.Trigger>
+                  <Select.ValueText />
+                </Select.Trigger>
+                <Select.IndicatorGroup>
+                  <Select.Indicator />
+                </Select.IndicatorGroup>
+              </Select.Control>
+              <Portal>
+                <Select.Positioner>
+                  <Select.Content>
+                    {perPageOptions.items.map((option) => (
+                      <Select.Item item={option} key={option.value}>
+                        {option.label}
+                        <Select.ItemIndicator />
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Positioner>
+              </Portal>
+            </Select.Root>
+          </Flex>
+        </Flex>
       </Flex>
 
       <Box flex="1" overflowY="auto" px={4} py={2}>
@@ -122,8 +163,16 @@ export const ListRooms = () => {
 
         {Array.isArray(rooms) && rooms.map((room, index) => {
           const messageArray = Array.isArray(room.messages) ? room.messages : [];
-          const lastMessage = messageArray[0]?.value || "Start a conversation...";
-          const messageTime = messageArray[0]?.timestamp || room.created_at;
+
+          // Handle both formats (value/role and text/sender)
+          const lastMessage = messageArray.length > 0
+            ? (messageArray[0]?.text || "")
+            : "";
+
+          const messageTime = messageArray.length > 0
+            ? (messageArray[0]?.timestamp || room.created_at)
+            : room.created_at;
+
           const isActive = activeRoom === room.id;
           const messageCount = room.message_count || messageArray.length;
 
@@ -135,8 +184,16 @@ export const ListRooms = () => {
               borderColor="gray.200"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.2 }}
-              ref={index === rooms.length - 1 ? lastRoomRef : undefined}
+              transition={{
+                delay: index * 0.05,
+                duration: 0.3,
+                y: { type: "spring", stiffness: 300, damping: 30 }
+              }}
+              whileHover={{
+                scale: 1.01,
+                transition: { duration: 0.2 }
+              }}
+              whileTap={{ scale: 0.98 }}
             >
               <Box
                 p={3}
@@ -171,18 +228,10 @@ export const ListRooms = () => {
           );
         })}
 
-        {/* Separate ref element removed since we're using ref on the last item */}
-
         {loading && (
           <Flex justify="center" py={4}>
             <Spinner size="md" />
           </Flex>
-        )}
-
-        {!hasMore && rooms.length > 0 && (
-          <Text py={4} color="gray.500" textAlign="center">
-            No more rooms to load
-          </Text>
         )}
 
         {!loading && !error && rooms.length === 0 && (
@@ -191,6 +240,80 @@ export const ListRooms = () => {
           </Text>
         )}
       </Box>
+
+      {totalRooms > 0 && (
+        <Flex
+          justify="space-between"
+          align="center"
+          p={4}
+          borderTop="1px solid"
+          borderColor="gray.200"
+        >
+          <Text fontSize="sm" color="gray.600">
+            Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalRooms)} of {totalRooms} rooms
+          </Text>
+
+          <Flex gap={1} align="center">
+            <Box
+              as="button"
+              onClick={() => handlePageChange(1)}
+              px={2} py={1}
+              borderRadius="md"
+              bg={currentPage === 1 ? "gray.100" : "gray.200"}
+              color={currentPage === 1 ? "gray.400" : "gray.700"}
+              _hover={{ bg: currentPage === 1 ? "gray.100" : "gray.300" }}
+              aria-disabled={currentPage === 1}
+              pointerEvents={currentPage === 1 ? "none" : "auto"}
+            >
+              «
+            </Box>
+            <Box
+              as="button"
+              onClick={() => handlePageChange(currentPage - 1)}
+              px={2} py={1}
+              borderRadius="md"
+              bg={currentPage === 1 ? "gray.100" : "gray.200"}
+              color={currentPage === 1 ? "gray.400" : "gray.700"}
+              _hover={{ bg: currentPage === 1 ? "gray.100" : "gray.300" }}
+              aria-disabled={currentPage === 1}
+              pointerEvents={currentPage === 1 ? "none" : "auto"}
+            >
+              ‹
+            </Box>
+
+            <Text mx={2} fontSize="sm">
+              Page {currentPage} of {totalPages || 1}
+            </Text>
+
+            <Box
+              as="button"
+              onClick={() => handlePageChange(currentPage + 1)}
+              px={2} py={1}
+              borderRadius="md"
+              bg={currentPage === totalPages ? "gray.100" : "gray.200"}
+              color={currentPage === totalPages ? "gray.400" : "gray.700"}
+              _hover={{ bg: currentPage === totalPages ? "gray.100" : "gray.300" }}
+              aria-disabled={currentPage === totalPages}
+              pointerEvents={currentPage === totalPages ? "none" : "auto"}
+            >
+              ›
+            </Box>
+            <Box
+              as="button"
+              onClick={() => handlePageChange(totalPages)}
+              px={2} py={1}
+              borderRadius="md"
+              bg={currentPage === totalPages ? "gray.100" : "gray.200"}
+              color={currentPage === totalPages ? "gray.400" : "gray.700"}
+              _hover={{ bg: currentPage === totalPages ? "gray.100" : "gray.300" }}
+              aria-disabled={currentPage === totalPages}
+              pointerEvents={currentPage === totalPages ? "none" : "auto"}
+            >
+              »
+            </Box>
+          </Flex>
+        </Flex>
+      )}
     </Flex>
   );
 };

@@ -689,22 +689,24 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                         py={1}
                         borderRadius="md"
                         justifyContent="center"
+                        alignItems="center"
                         fontWeight="medium"
                         fontSize="xs"
                         textTransform="uppercase"
-                        mr={2}
+                        mr={1}
+                        minWidth="70px"
                       >
                         {localTask.status}
                       </Flex>
                       <IconButton
                         aria-label="Refresh task"
-                        icon={<FaSync />}
                         size="xs"
                         variant="ghost"
                         loading={isRefreshing}
                         onClick={() => localTask?.id && fetchTaskStatus(localTask.id)}
-                        ml={1}
-                      />
+                      >
+                        <FaSync />
+                      </IconButton>
                     </>
                   ) : (
                     <Text fontSize="xs" color="gray.500">No task selected</Text>

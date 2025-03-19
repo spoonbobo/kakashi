@@ -92,7 +92,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     }
 
     setLoading(true);
-    console.log("window.location.hostname", window.location.hostname);
+    // console.log("window.location.hostname", window.location.hostname);
 
     const socket = io(window.location.hostname, {
       path: '/socket.io/chat/',
@@ -109,7 +109,6 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log("socket.data.user");
       setConnectionError(null);
       setLoading(false);
     });
@@ -142,7 +141,6 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
 
     socket.on('user_joined', (user: User) => {
       if (user.username.startsWith('agent')) {
-        console.log("11111 agent joined the chat");
         return;
       }
       setUsers(prev => [...prev, user]);
@@ -275,8 +273,8 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
       const data = await response.json();
       console.log('Agent response:', data);
       return data;
-    } catch (error) {
-      if (error.name === 'AbortError') {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
         console.warn('Agent request timed out');
       } else {
         console.error('Error accessing MCP:', error);
