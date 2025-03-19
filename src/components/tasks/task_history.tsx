@@ -1,24 +1,13 @@
-import { Box, Text, Spinner, Badge, Flex, Portal } from "@chakra-ui/react";
+import { Box, Text, Spinner, Flex, Portal } from "@chakra-ui/react";
 import { Table, Select, createListCollection } from "@chakra-ui/react";
 import { useAuth } from "@/auth/context";
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { getStatusColorProps, useTaskStatusUpdates } from '@/lib/task_status_utils';
+import { Task } from "@/types/task";
+import TaskStatusBadge from './task_status_badge';
 
 const MotionBox = motion(Box);
 
-interface Task {
-  id: string;
-  summarization: string;
-  role: string;
-  description: string;
-  created_at: string;
-  start_time: string;
-  end_time: string;
-  status: string;
-  result: string;
-}
 
 interface TasksProps {
   onTaskSelect?: (task: Task) => void;
@@ -265,24 +254,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
   };
 
   const getStatusBadge = (status: string) => {
-    const colorProps = getStatusColorProps(status);
-
-    return (
-      <Badge
-        colorScheme={colorProps.colorScheme}
-        variant="subtle"
-        px={2}
-        py={1}
-        borderRadius="md"
-        textTransform="uppercase"
-        fontSize="xs"
-        boxShadow="none"
-        bg={colorProps.bg}
-        color={colorProps.color}
-      >
-        {status}
-      </Badge>
-    );
+    return <TaskStatusBadge status={status} size="sm" />;
   };
 
   const handleStatusChange = (values: string[]) => {

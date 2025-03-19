@@ -24,7 +24,7 @@ const VStack = (props: any) => <Flex direction="column" {...props} />;
 const HStack = (props: any) => <Flex direction="row" {...props} />;
 
 const MotionBox = motion.create(Box);
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 50;
 
 export const ListRooms = () => {
   const { isAuthenticated, authChecked } = useAuth();

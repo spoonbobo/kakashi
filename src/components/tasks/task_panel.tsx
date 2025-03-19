@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/auth/context';
 import { TaskBox } from '@/components/tasks/task_box';
 import { FaSync } from 'react-icons/fa';
+import { TaskStatusBadge } from '@/components/tasks/task_status_badge';
 
 interface AgentTaskPanelProps {
   title?: string;
@@ -293,6 +294,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
               isNew={newTaskIds.has(item.id)}
               forceTimeUnderStatus={true}
               preventTextTrimming={true}
+              statusBadge={<TaskStatusBadge status={item.status} size="sm" />}
             />
           ))}
         </AnimatePresence>

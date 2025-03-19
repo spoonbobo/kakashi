@@ -8,23 +8,14 @@ import { FaCheck, FaTimes, FaSync } from 'react-icons/fa';
 import { Tooltip } from "@/components/tooltip";
 import { ToastContainer, toast, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { Task } from '@/types/task';
+import TaskStatusBadge from './task_status_badge';
+import TaskTimestamps from './task_timestamps';
+import TaskIdDisplay from './task_id_display';
 
 interface TaskLoggerProps {
   title?: string;
-  task?: {
-    id: string;
-    task_id: string;
-    name: string;
-    description: string;
-    created_at: string;
-    start_time: string;
-    end_time: string;
-    status: string;
-    result: string;
-    summarization?: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tools_called: Record<string, any>;
-  };
+  task?: Task;
   onApprove?: (taskId: string, editedToolCalls: Array<Record<string, any>>) => void;
   onDeny?: (taskId: string, editedToolCalls: Array<Record<string, any>>) => void;
 }
@@ -32,12 +23,264 @@ interface TaskLoggerProps {
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
 
+const TaskMetadata = ({ task }: { task: Task }) => {
+  if (!task) {
+    return (
+      <Box p={5} textAlign="center" m={4}>
+        <Text color="gray.600" fontSize={{ base: "md", md: "lg" }}>No task selected</Text>
+      </Box>
+    );
+  }
+
+  return (
+    <Flex direction="column" gap={4}>
+      {task.summarization && (
+        <Box width="100%">
+          <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Summarization</Text>
+          <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium" whiteSpace="pre-wrap">
+            {task.summarization}
+          </Text>
+        </Box>
+      )}
+
+      <Flex direction="row" wrap="wrap" gap={4}>
+        <TaskTimestamps
+          createdAt={task.created_at}
+          startTime={task.start_time}
+          endTime={task.end_time}
+        />
+      </Flex>
+
+      {task.status === 'completed' && (
+        <Box width="100%">
+          <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Result</Text>
+          <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium">
+            {task.result || 'No result available'}
+          </Text>
+        </Box>
+      )}
+    </Flex>
+  );
+};
+
+const TaskDescription = ({ description }: { description: string }) => (
+  <Text fontSize={{ base: "sm", md: "md" }} whiteSpace="pre-wrap" color="gray.700">
+    {description}
+  </Text>
+);
+
+const TaskToolCalls = ({
+  toolCalls,
+  onArgChange,
+  disabled
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  toolCalls: Array<Record<string, any>>,
+  onArgChange: (toolIndex: number, argKey: string, newValue: string) => void,
+  disabled: boolean
+}) => {
+  if (!toolCalls || toolCalls.length === 0) {
+    return <Text color="gray.600" fontSize="sm">No tool calls associated with this task</Text>;
+  }
+
+  return (
+    <Flex direction="column" gap={4}>
+      <Box>
+        {toolCalls.map((tool, toolIndex) => (
+          <Box key={toolIndex} mb={4} p={3} borderWidth="1px" borderRadius="md" borderColor="gray.200">
+            <Flex justifyContent="space-between" alignItems="center" mb={2}>
+              <Text fontSize="sm" fontWeight="semibold" color="blue.600">
+                {tool.tool_name || tool.name}
+              </Text>
+              {tool.mcp_server && (
+                <Text fontSize="xs" color="gray.500" fontStyle="italic">
+                  Server: {tool.mcp_server}
+                </Text>
+              )}
+            </Flex>
+            {tool.args && Object.keys(tool.args).length > 0 ? (
+              <Box ml={2}>
+                <Text fontSize="xs" color="gray.600" mb={1}>Arguments:</Text>
+                {Object.entries(tool.args).map(([key, value], argIndex) => (
+                  <Flex key={argIndex} justify="space-between" align="center" mb={2}>
+                    <Text fontSize="sm" color="gray.700" fontWeight="medium">{key}:</Text>
+                    <Input
+                      size="sm"
+                      width="60%"
+                      value={typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                      onChange={(e) => onArgChange(toolIndex, key, e.target.value)}
+                      fontFamily="mono"
+                      disabled={disabled}
+                    />
+                  </Flex>
+                ))}
+              </Box>
+            ) : (
+              <Text fontSize="sm" color="gray.600" fontStyle="italic">No arguments provided</Text>
+            )}
+          </Box>
+        ))}
+      </Box>
+    </Flex>
+  );
+};
+
+const TaskActionButtons = ({
+  task,
+  isProcessingAction,
+  onApprove,
+  onDeny
+}: {
+  task: Task | null,
+  isProcessingAction: boolean,
+  onApprove: () => void,
+  onDeny: () => void
+}) => {
+  const isTaskSelected = !!task;
+  const isTaskPending = task?.status === 'pending';
+  const isTaskApproved = task?.status === 'approved';
+  const isTaskDenied = task?.status === 'denied';
+  const isTaskRunning = task?.status === 'running';
+  const isTaskSuccessful = task?.status === 'successful';
+  const isTaskFailed = task?.status === 'failed';
+  const isTaskPostApproval = isTaskApproved || isTaskRunning || isTaskSuccessful || isTaskFailed;
+  const isButtonDisabled = !isTaskSelected || !isTaskPending || isProcessingAction;
+
+  // Helper function to get appropriate tooltip message
+  const getTooltipMessage = () => {
+    if (!isTaskSelected) return "No task selected";
+    if (isTaskDenied) return "Task has been denied";
+    if (isTaskPostApproval) return "Task has been approved";
+    if (isTaskRunning) return "Task is currently running";
+    if (isTaskSuccessful) return "Task completed successfully";
+    if (isTaskFailed) return "Task execution failed";
+    if (!isTaskPending) return `Task status is ${task.status}`;
+    if (isProcessingAction) return "Processing...";
+    return "";
+  };
+
+  return (
+    <MotionFlex
+      justify="space-between"
+      mt={2}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+    >
+      <Tooltip content={getTooltipMessage() || "Approve task"}>
+        <IconButton
+          aria-label="Approve task"
+          bg="transparent"
+          color={!isTaskSelected ? 'gray.300' :
+            isTaskPostApproval ? 'green.300' :
+              isTaskDenied ? 'gray.300' : 'green.500'}
+          _hover={{
+            bg: isButtonDisabled ? 'transparent' : 'green.50',
+            color: isButtonDisabled ? undefined : 'green.600'
+          }}
+          _active={{
+            bg: isButtonDisabled ? 'transparent' : 'green.100'
+          }}
+          _focus={{
+            boxShadow: isButtonDisabled ? 'none' : '0 0 0 3px rgba(72, 187, 120, 0.3)'
+          }}
+          onClick={onApprove}
+          cursor={isButtonDisabled ? 'not-allowed' : 'pointer'}
+          size="md"
+          flex="1"
+          mr={2}
+        >
+          <Icon as={FaCheck} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip content={getTooltipMessage() || "Deny task"}>
+        <IconButton
+          aria-label="Deny task"
+          bg="transparent"
+          color={!isTaskSelected ? 'gray.300' :
+            isTaskDenied ? 'red.300' :
+              isTaskPostApproval ? 'gray.300' : 'red.500'}
+          _hover={{
+            bg: isButtonDisabled ? 'transparent' : 'red.50',
+            color: isButtonDisabled ? undefined : 'red.600'
+          }}
+          _active={{
+            bg: isButtonDisabled ? 'transparent' : 'red.100'
+          }}
+          _focus={{
+            boxShadow: isButtonDisabled ? 'none' : '0 0 0 3px rgba(245, 101, 101, 0.3)'
+          }}
+          onClick={onDeny}
+          cursor={isButtonDisabled ? 'not-allowed' : 'pointer'}
+          size="md"
+          flex="1"
+        >
+          <Icon as={FaTimes} />
+        </IconButton>
+      </Tooltip>
+    </MotionFlex>
+  );
+};
+
+const TaskSidebar = ({
+  task,
+  isProcessingAction,
+  isRefreshing,
+  onRefresh,
+  onApprove,
+  onDeny
+}: {
+  task: Task | null,
+  isProcessingAction: boolean,
+  isRefreshing: boolean,
+  onRefresh: () => void,
+  onApprove: () => void,
+  onDeny: () => void
+}) => (
+  <Box width="180px" bg="gray.50" p={4} borderRadius="md" height="fit-content">
+    <Flex direction="column" gap={3}>
+      <Flex justify="space-between" align="center">
+        <Text fontSize="xs" fontWeight="medium" color="gray.600">STATUS</Text>
+        <Flex align="center">
+          {task ? (
+            <>
+              <TaskStatusBadge status={task.status} />
+              <IconButton
+                aria-label="Refresh task"
+                size="xs"
+                variant="ghost"
+                onClick={onRefresh}
+                loading={isRefreshing}
+              >
+                <FaSync />
+              </IconButton>
+            </>
+          ) : (
+            <Text fontSize="xs" color="gray.500">No task selected</Text>
+          )}
+        </Flex>
+      </Flex>
+
+      <Box mb={2}>
+        {task && <TaskIdDisplay taskId={task.id} />}
+      </Box>
+
+      <TaskActionButtons
+        task={task}
+        isProcessingAction={isProcessingAction}
+        onApprove={onApprove}
+        onDeny={onDeny}
+      />
+    </Flex>
+  </Box>
+);
+
 const TaskLogger: React.FC<TaskLoggerProps> = ({
   task,
   onApprove,
   onDeny
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_priority, _setPriority] = useState("High");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -170,6 +413,12 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
     // Prevent multiple clicks during processing
     if (isProcessingAction) return;
 
+    const isTaskFinalized = taskObj.status === 'approved' || taskObj.status === 'denied';
+    if (isTaskFinalized) {
+      console.log(`Task already ${taskObj.status}, cannot ${action}`);
+      return;
+    }
+
     try {
       setIsProcessingAction(true);
 
@@ -209,7 +458,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
             message: action === 'approve'
               ? `Task ${taskObj.id} has been approved and will be executed`
               : `Task ${taskObj.id} has been denied and will not be executed`,
-            sender: 'TaskSystem',
+            sender: user?.username,
             priority: action === 'approve' ? 'medium' : 'high',
             status: 'new'
           }
@@ -336,55 +585,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
       </Box>
     );
   }
-
-  const renderTaskMetadata = () => {
-    if (!localTask) {
-      return (
-        <Box p={5} textAlign="center" m={4}>
-          <Text color="gray.600" fontSize={{ base: "md", md: "lg" }}>No task selected</Text>
-        </Box>
-      );
-    }
-
-    return (
-      <Flex direction="column" gap={4}>
-        {localTask.summarization && (
-          <Box width="100%">
-            <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Summarization</Text>
-            <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium" whiteSpace="pre-wrap">
-              {localTask.summarization}
-            </Text>
-          </Box>
-        )}
-
-        <Flex direction="row" wrap="wrap" gap={4}>
-          <Box flex="1" minWidth="200px">
-            <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Timestamps</Text>
-            <Flex direction="column" gap={1}>
-              <Text fontSize={{ base: "sm", md: "md" }}>
-                <Text as="span" fontWeight="medium">Created:</Text> {new Date(localTask.created_at).toLocaleString()}
-              </Text>
-              <Text fontSize={{ base: "sm", md: "md" }}>
-                <Text as="span" fontWeight="medium">Started:</Text> {localTask.start_time ? new Date(localTask.start_time).toLocaleString() : '-'}
-              </Text>
-              <Text fontSize={{ base: "sm", md: "md" }}>
-                <Text as="span" fontWeight="medium">Completed:</Text> {localTask.end_time ? new Date(localTask.end_time).toLocaleString() : '-'}
-              </Text>
-            </Flex>
-          </Box>
-        </Flex>
-
-        {localTask.status === 'completed' && (
-          <Box width="100%">
-            <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Result</Text>
-            <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium">
-              {localTask.result || 'No result available'}
-            </Text>
-          </Box>
-        )}
-      </Flex>
-    );
-  };
 
   return (
     <Box
@@ -527,7 +727,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                       delay: 0.1
                     }}
                   >
-                    {renderTaskMetadata()}
+                    <TaskMetadata task={localTask} />
                   </MotionBox>
                 </Tabs.Content>
 
@@ -554,9 +754,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                     }}
                   >
                     {localTask ? (
-                      <Text fontSize={{ base: "sm", md: "md" }} whiteSpace="pre-wrap" color="gray.700">
-                        {localTask.description}
-                      </Text>
+                      <TaskDescription description={localTask.description} />
                     ) : (
                       <Text color="gray.600">No task selected</Text>
                     )}
@@ -586,48 +784,11 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                     }}
                   >
                     {localTask ? (
-                      editedToolCalls && editedToolCalls.length > 0 ? (
-                        <Flex direction="column" gap={4}>
-                          <Box>
-                            {editedToolCalls.map((tool, toolIndex) => (
-                              <Box key={toolIndex} mb={4} p={3} borderWidth="1px" borderRadius="md" borderColor="gray.200">
-                                <Flex justifyContent="space-between" alignItems="center" mb={2}>
-                                  <Text fontSize="sm" fontWeight="semibold" color="blue.600">
-                                    {tool.tool_name || tool.name}
-                                  </Text>
-                                  {tool.mcp_server && (
-                                    <Text fontSize="xs" color="gray.500" fontStyle="italic">
-                                      Server: {tool.mcp_server}
-                                    </Text>
-                                  )}
-                                </Flex>
-                                {tool.args && Object.keys(tool.args).length > 0 ? (
-                                  <Box ml={2}>
-                                    <Text fontSize="xs" color="gray.600" mb={1}>Arguments:</Text>
-                                    {Object.entries(tool.args).map(([key, value], argIndex) => (
-                                      <Flex key={argIndex} justify="space-between" align="center" mb={2}>
-                                        <Text fontSize="sm" color="gray.700" fontWeight="medium">{key}:</Text>
-                                        <Input
-                                          size="sm"
-                                          width="60%"
-                                          value={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                          onChange={(e) => handleArgChange(toolIndex, key, e.target.value)}
-                                          fontFamily="mono"
-                                          disabled={localTask.status !== 'pending'}
-                                        />
-                                      </Flex>
-                                    ))}
-                                  </Box>
-                                ) : (
-                                  <Text fontSize="sm" color="gray.600" fontStyle="italic">No arguments provided</Text>
-                                )}
-                              </Box>
-                            ))}
-                          </Box>
-                        </Flex>
-                      ) : (
-                        <Text color="gray.600" fontSize="sm">No tool calls associated with this task</Text>
-                      )
+                      <TaskToolCalls
+                        toolCalls={editedToolCalls}
+                        onArgChange={handleArgChange}
+                        disabled={localTask.status !== 'pending'}
+                      />
                     ) : (
                       <Text color="gray.600">No task selected</Text>
                     )}
@@ -665,169 +826,24 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
             </Tabs.Root>
           </Box>
 
-          <Box width="180px" bg="gray.50" p={4} borderRadius="md" height="fit-content">
-            <Flex direction="column" gap={3}>
-              <Flex justify="space-between" align="center">
-                <Text fontSize="xs" fontWeight="medium" color="gray.600">STATUS</Text>
-                <Flex align="center">
-                  {localTask ? (
-                    <>
-                      <Flex
-                        bg={
-                          localTask.status === 'completed' ? 'green.100' :
-                            localTask.status === 'pending' ? 'yellow.100' :
-                              localTask.status === 'running' ? 'blue.100' :
-                                localTask.status === 'denied' ? 'red.100' : 'gray.100'
-                        }
-                        color={
-                          localTask.status === 'completed' ? 'green.700' :
-                            localTask.status === 'pending' ? 'yellow.700' :
-                              localTask.status === 'running' ? 'blue.700' :
-                                localTask.status === 'denied' ? 'red.700' : 'gray.700'
-                        }
-                        px={2}
-                        py={1}
-                        borderRadius="md"
-                        justifyContent="center"
-                        alignItems="center"
-                        fontWeight="medium"
-                        fontSize="xs"
-                        textTransform="uppercase"
-                        mr={1}
-                        minWidth="70px"
-                      >
-                        {localTask.status}
-                      </Flex>
-                      <IconButton
-                        aria-label="Refresh task"
-                        size="xs"
-                        variant="ghost"
-                        loading={isRefreshing}
-                        onClick={() => localTask?.id && fetchTaskStatus(localTask.id)}
-                      >
-                        <FaSync />
-                      </IconButton>
-                    </>
-                  ) : (
-                    <Text fontSize="xs" color="gray.500">No task selected</Text>
-                  )}
-                </Flex>
-              </Flex>
-
-              <Box mb={2}>
-                <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>TASK ID</Text>
-                <Text
-                  fontSize="xs"
-                  fontFamily="mono"
-                  color="gray.700"
-                  wordBreak="break-all"
-                  cursor="pointer"
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      const textArea = document.createElement('textarea');
-                      textArea.value = localTask.id;
-                      textArea.style.position = 'fixed';
-                      textArea.style.left = '-999999px';
-                      textArea.style.top = '-999999px';
-                      document.body.appendChild(textArea);
-                      textArea.focus();
-                      textArea.select();
-                      document.execCommand('copy');
-                      document.body.removeChild(textArea);
-                      toast.info("Task ID copied to clipboard", { autoClose: 2000 });
-                    }
-                  }}
-                  title="Click to copy ID"
-                >
-                  {localTask.id}
-                </Text>
-              </Box>
-
-              <MotionFlex
-                justify="space-between"
-                mt={2}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-              >
-                <Tooltip content={!localTask ? "No task selected" :
-                  localTask.status === 'approved' || localTask.status === 'denied' ?
-                    `Task already ${localTask.status}` : isProcessingAction ? "Processing..." : "Approve task"}>
-                  <IconButton
-                    aria-label="Approve task"
-                    bg="transparent"
-                    color={!localTask ? 'gray.300' :
-                      localTask.status === 'approved' ? 'green.300' :
-                        localTask.status === 'denied' ? 'gray.300' : 'green.500'}
-                    _hover={{
-                      bg: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                        'transparent' : 'green.50',
-                      color: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                        undefined : 'green.600'
-                    }}
-                    _active={{
-                      bg: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                        'transparent' : 'green.100'
-                    }}
-                    _focus={{
-                      boxShadow: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                        'none' : '0 0 0 3px rgba(72, 187, 120, 0.3)'
-                    }}
-                    onClick={() => {
-                      if (localTask && localTask.status !== 'approved' && localTask.status !== 'denied' && !isProcessingAction) {
-                        handleTaskAction(localTask, 'approve');
-                      }
-                    }}
-                    cursor={!localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                      'not-allowed' : 'pointer'}
-                    size="md"
-                    flex="1"
-                    mr={2}
-                    loading={isProcessingAction && localTask?.status !== 'approved' && localTask?.status !== 'denied'}
-                  >
-                    <Icon as={FaCheck} />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip content={!localTask ? "No task selected" :
-                  localTask.status === 'approved' || localTask.status === 'denied' ?
-                    `Task already ${localTask.status}` : isProcessingAction ? "Processing..." : "Deny task"}>
-                  <IconButton
-                    aria-label="Deny task"
-                    bg="transparent"
-                    color={!localTask ? 'gray.300' :
-                      localTask.status === 'denied' ? 'red.300' :
-                        localTask.status === 'approved' ? 'gray.300' : 'red.500'}
-                    _hover={{
-                      bg: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                        'transparent' : 'red.50',
-                      color: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                        undefined : 'red.600'
-                    }}
-                    _active={{
-                      bg: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                        'transparent' : 'red.100'
-                    }}
-                    _focus={{
-                      boxShadow: !localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                        'none' : '0 0 0 3px rgba(245, 101, 101, 0.3)'
-                    }}
-                    onClick={() => {
-                      if (localTask && localTask.status !== 'approved' && localTask.status !== 'denied' && !isProcessingAction) {
-                        handleTaskAction(localTask, 'deny');
-                      }
-                    }}
-                    cursor={!localTask || localTask.status === 'approved' || localTask.status === 'denied' || isProcessingAction ?
-                      'not-allowed' : 'pointer'}
-                    size="md"
-                    flex="1"
-                    loading={isProcessingAction && localTask?.status !== 'approved' && localTask?.status !== 'denied'}
-                  >
-                    <Icon as={FaTimes} />
-                  </IconButton>
-                </Tooltip>
-              </MotionFlex>
-            </Flex>
-          </Box>
+          <TaskSidebar
+            task={localTask}
+            isProcessingAction={isProcessingAction}
+            isRefreshing={isRefreshing}
+            onRefresh={() => localTask?.id && fetchTaskStatus(localTask.id)}
+            onApprove={() => {
+              const isTaskFinalized = localTask?.status === 'approved' || localTask?.status === 'denied';
+              if (localTask && !isTaskFinalized && !isProcessingAction) {
+                handleTaskAction(localTask, 'approve');
+              }
+            }}
+            onDeny={() => {
+              const isTaskFinalized = localTask?.status === 'approved' || localTask?.status === 'denied';
+              if (localTask && !isTaskFinalized && !isProcessingAction) {
+                handleTaskAction(localTask, 'deny');
+              }
+            }}
+          />
         </Flex>
       </Flex>
 

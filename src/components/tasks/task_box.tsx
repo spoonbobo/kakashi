@@ -1,7 +1,8 @@
-import React, { memo } from 'react';
+import React, { memo, ReactNode } from 'react';
 import { Box, Text, Badge, Flex } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
-import { getStatusColorProps } from '@/lib/task_status_utils';
+import { getStatusColorProps } from '@/components/tasks/task_status_utils';
+import { TaskStatusBadge } from '@/components/tasks/task_status_badge';
 
 interface TaskBoxProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,6 +12,7 @@ interface TaskBoxProps {
     isNew?: boolean;
     forceTimeUnderStatus?: boolean;
     preventTextTrimming?: boolean;
+    statusBadge?: ReactNode;
 }
 
 const MotionBox = motion(Box);
@@ -24,7 +26,8 @@ export const TaskBox = memo<TaskBoxProps>(({
     onClick,
     isNew = false,
     forceTimeUnderStatus = false,
-    preventTextTrimming = false
+    preventTextTrimming = false,
+    statusBadge
 }) => {
     // Validate task data
     if (!item) {
@@ -76,6 +79,29 @@ export const TaskBox = memo<TaskBoxProps>(({
             return text.substring(0, maxLength - 3) + '...';
         }
         return text;
+    };
+
+    // Render the status badge - either use the provided one or create a default
+    const renderStatusBadge = () => {
+        if (statusBadge) {
+            return statusBadge;
+        }
+
+        return (
+            <MotionBadge
+                colorScheme={getStatusColor(item.status).colorScheme}
+                fontSize="xs"
+                flexShrink={0}
+                bg={getStatusColor(item.status).bg}
+                color={getStatusColor(item.status).color}
+                variant="subtle"
+                px={1.5}
+                py={0.5}
+                borderRadius="md"
+            >
+                {item.status}
+            </MotionBadge>
+        );
     };
 
     return (
@@ -131,25 +157,13 @@ export const TaskBox = memo<TaskBoxProps>(({
                             alignItems="flex-end"
                             flexShrink={0}
                         >
-                            <MotionBadge
-                                colorScheme={getStatusColor(item.status).colorScheme}
-                                fontSize="xs"
-                                flexShrink={0}
-                                bg={getStatusColor(item.status).bg}
-                                color={getStatusColor(item.status).color}
-                                variant="subtle"
-                                px={1.5}
-                                py={0.5}
-                                borderRadius="md"
-                                mb={1}
-                            >
-                                {item.status}
-                            </MotionBadge>
+                            {renderStatusBadge()}
                             <MotionText
                                 fontSize="2xs"
                                 color="gray.500"
                                 textAlign="right"
                                 whiteSpace="nowrap"
+                                mt={1}
                             >
                                 {formatTime(item.created_at)}
                             </MotionText>
@@ -190,19 +204,7 @@ export const TaskBox = memo<TaskBoxProps>(({
                         >
                             {trimSummarization(item.summarization)}
                         </MotionText>
-                        <MotionBadge
-                            colorScheme={getStatusColor(item.status).colorScheme}
-                            fontSize="xs"
-                            flexShrink={0}
-                            bg={getStatusColor(item.status).bg}
-                            color={getStatusColor(item.status).color}
-                            variant="subtle"
-                            px={1.5}
-                            py={0.5}
-                            borderRadius="md"
-                        >
-                            {item.status}
-                        </MotionBadge>
+                        {renderStatusBadge()}
                     </MotionFlex>
 
                     <MotionFlex

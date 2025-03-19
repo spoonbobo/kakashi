@@ -406,10 +406,19 @@ export const NotifyPanel = () => {
                                 bg="gray.50"
                                 _hover={{ bg: "gray.100" }}
                             >
-                                <Text fontWeight="normal" mb={1}>{notification.message}</Text>
-                                <Text fontSize="xs" color="gray.500">
-                                    {new Date(notification.timestamp).toLocaleString()}
-                                </Text>
+                                <Flex direction="column" w="100%">
+                                    {notification.sender && (
+                                        <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>
+                                            From: {notification.sender}
+                                        </Text>
+                                    )}
+                                    <Text fontWeight="normal" mb={1}>{notification.message}</Text>
+                                    <Flex justifyContent="flex-end">
+                                        <Text fontSize="xs" color="gray.500">
+                                            {new Date(notification.timestamp).toLocaleString()}
+                                        </Text>
+                                    </Flex>
+                                </Flex>
                             </MotionBox>
                         ))}
                     </AnimatePresence>
