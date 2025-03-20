@@ -19,16 +19,15 @@ async def lifespan(app: FastAPI):
     mcp_servers = json.load(open(os.getenv("MCP_SERVERS_JSON", ""))) or {}
     mcp_servers = mcp_servers["mcpServers"]
     bypasser = Bypasser(mcp_servers)
-    await bypasser.bypass([{"role": "assistant", "content": "How are you?"}], "what is the weather in new york?")
 
     mcp_client_manager = MCPClientManager(mcp_servers, bypasser)
     await mcp_client_manager.connect_to_servers()
 
     # Log network information for debugging
-    hostname = socket.gethostname()
-    local_ip = socket.gethostbyname(hostname)
-    logger.info(f"Server hostname: {hostname}")
-    logger.info(f"Server local IP: {local_ip}")
+    # hostname = socket.gethostname()
+    # local_ip = socket.gethostbyname(hostname)
+    # logger.info(f"Server hostname: {hostname}")
+    # logger.info(f"Server local IP: {local_ip}")
 
     logger.info("Connected to MCP client")
 

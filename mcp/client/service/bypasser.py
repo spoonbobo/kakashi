@@ -4,7 +4,7 @@ from typing import List, Dict
 from loguru import logger
 import numpy as np
 from ollama import Client
-from scipy.spatial.distance import cosine
+from scipy.spatial.distance import cdist
 
 class Bypasser:
     """
@@ -41,7 +41,7 @@ class Bypasser:
         self.server_embeddings = self.embed_server_descriptions()
         self.server_descriptions = self.format_server_descriptions()
 
-    def embed_server_descriptions(self) -> List[List[float]]:
+    def embed_server_descriptions(self) -> np.ndarray:
         embeddings = []
         for server_name in self.server_names:
             description = self.server_descriptions[server_name]
@@ -49,8 +49,8 @@ class Bypasser:
                 model=self.embed_model,
                 input=description
             )
-            embeddings.append(embedding.embeddings[0])
-        return embeddings
+            embeddings.append(np.array(embedding.embeddings[0], dtype=np.float32))
+        return np.array(embeddings)
 
     def load_server_description(self, server: str) -> str:
         with open(server, 'r') as file:
@@ -72,10 +72,18 @@ class Bypasser:
             model=self.ollama_model,
             messages=[{"role": "user", "content": prompt}],
         )
-
-        selected_server = self.server_names[
-            np.argmin(cosine(response.embeddings[0],  # type: ignore
-                             self.server_embeddings))]
-        logger.info(f"Bypass response: {response}")
+        
+        response_embedding = self.ollama_client.embed(
+            model=self.embed_model,
+            input=response.message.content # type: ignore
+        )
+        
+        response_embeddings = np.array(response_embedding.embeddings[0], dtype=np.float32).reshape(1, -1)
+        
+        server_embeddings_array = self.server_embeddings
+        distances = cdist(response_embeddings, server_embeddings_array, 'euclidean')
+        selected_server = self.server_names[np.argmin(distances)]
+        
         return selected_server
+
 

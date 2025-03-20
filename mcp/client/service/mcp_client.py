@@ -101,7 +101,8 @@ class MCPClientManager:
         
         tool_calls = llm_response.message.tool_calls
         if tool_calls is None:
-                tool_calls = []
+            tool_calls = []
+
         tools_called = [
             {
                 "tool_name": tool_call.function.name,
