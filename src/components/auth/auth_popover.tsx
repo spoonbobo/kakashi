@@ -76,7 +76,6 @@ export const AuthPopover = memo(() => {
                     onClick={logout}
                     colorScheme="red"
                     size="sm"
-                    leftIcon={<Icon as={FaSignOutAlt} />}
                     width="full"
                     mt="2"
                   >

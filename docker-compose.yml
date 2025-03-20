@@ -126,6 +126,8 @@ services:
       - AGENTPASSWORD=${AGENTPASSWORD}
       - OLLAMA_API_BASE_URL=http://kakashi-llm:11434
       - OLLAMA_MODEL=llama3.2:latest
+      - BYPASSER_MODEL=gemma3:4b
+      - EMBED_MODEL=nomic-embed-text:latest
     networks:
       - app-network
 

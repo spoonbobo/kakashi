@@ -1,7 +1,7 @@
 {
     "mcpServers": {
         "weather": {
-            "description": "Weather server",
+            "description": "/servers/description/weather.md",
             "path": "/servers/weather.py"
         }
     }

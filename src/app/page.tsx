@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import { Navbar } from '../components/navbar';
 import WelcomeBox from '../components/greeting/welcome_box';
-import AgentTaskPanel from '../components/tasks/task_panel';
+import AgentTaskPanel from '../components/task/task_panel';
 import { ResizableLayoutV } from '@/components/stretch/resizeable_layoutV';
 import { ResizableLayoutH } from '@/components/stretch/resizeable_layoutH';
 import { ListRooms } from '../components/chat/list_rooms';
-import { Tasks } from '../components/tasks/task_history';
-import TaskLogger from '../components/tasks/task_logger';
+import { Tasks } from '../components/task/task_history';
+import TaskLogger from '../components/task/task_logger';
 import ChatRoom from '../components/chat/chat_room';
 import { KnowledgeBase } from '../components/kb/knowledge_base';
 import { NotifyPanel } from '../components/alert/notify_panel';
+import { Help } from '../components/help/help';
 import "./globals.css"
 
 
@@ -172,8 +173,8 @@ export default function Home() {
                   />}
                 /> :
                   activeView === 'knowledge_base' ? <KnowledgeBase /> :
-                    // activeView === 'help' ? <Help /> :
-                    <ListRooms />
+                    activeView === 'help' ? <Help /> :
+                      <ListRooms />
           }
           rightComponent={
             <ResizableLayoutH

@@ -4,11 +4,6 @@ import jwt from 'jsonwebtoken';
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
-interface User {
-  id: string;
-  username: string;
-}
-
 interface Notification {
   id?: string;
   notification_id: string;
@@ -77,7 +72,8 @@ export const setupAlertServer = (httpServer: HttpServer) => {
       };
 
       // Add to in-memory storage
-      notifications.unshift(newNotification);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      notifications.unshift(newNotification as any);
       notifications = notifications.slice(0, MAX_NOTIFICATIONS);
 
       // Broadcast to all clients
@@ -91,7 +87,8 @@ export const setupAlertServer = (httpServer: HttpServer) => {
       });
       
       // Store in database (optional)
-      storeNotification(newNotification).catch(err => 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      storeNotification(newNotification as any).catch(err => 
         console.error('Failed to store notification:', err)
       );
     });
@@ -129,6 +126,7 @@ const httpServer = app.listen(3002, () => {
 setupAlertServer(httpServer);
 
 // Helper function to store notifications in the database
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const storeNotification = async (notificationData: Notification): Promise<any> => {
   try {
     console.log('Storing notification in database:', notificationData.notification_id);

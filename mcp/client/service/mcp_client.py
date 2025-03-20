@@ -10,6 +10,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.types import Tool as mcp_tool
 from mcp.client.stdio import stdio_client
 
+
 from schemas.mcp import MCPAccess, MCPResponse, MCPToolCall
 from service.bypasser import Bypasser
 
@@ -17,9 +18,9 @@ class MCPClientManager:
     """
     A MCP client manager that contains connections to mcp servers
     """
-    def __init__(self, servers: dict):
-        self.servers = servers["mcpServers"]
-        self.bypasser = Bypasser(servers)
+    def __init__(self, servers: dict, bypasser: Bypasser):
+        self.servers = servers
+        self.bypasser = bypasser
         self.exit_stack = {server: AsyncExitStack() for server in self.servers}
         self.ollama_client = Client(host=os.getenv("OLLAMA_API_BASE_URL"))
         self.ollama_model = os.getenv("OLLAMA_MODEL", "")
@@ -70,11 +71,9 @@ class MCPClientManager:
         self, 
         access: MCPAccess, 
     ) -> MCPResponse:
-        byp_mcp_server = await self.bypasser.bypass(access.text)
-        server = self.servers[byp_mcp_server]
-
         messages = access.history
         query = access.text.replace("@agent", "")
+        query = [{"role": "user", "content": query}]
         conversions = [
             {
                 "role": "assistant" if msg.sender == access.mentioned_agent else "user",
@@ -82,6 +81,9 @@ class MCPClientManager:
             }
             for msg in messages
         ]
+
+        byp_mcp_server = await self.bypasser.bypass(conversions, query[0]["content"])
+        server = self.servers[byp_mcp_server]
 
         tools = await server.list_tools()
         tools = tools.tools
@@ -93,7 +95,7 @@ class MCPClientManager:
 
         llm_response = self.ollama_client.chat(
             model=self.ollama_model,
-            messages=conversions + [{"role": "user", "content": query}],
+            messages=conversions + query,
             tools=ollama_tools,
         )
         
@@ -130,7 +132,7 @@ class MCPClientManager:
         response = MCPResponse(
             sender=access.mentioned_agent,
             text=",".join(descriptions),
-            summarization=summarization.message.content,
+            summarization=summarization.message.content, # type: ignore
             is_tool_call=True,
             tools_called=[MCPToolCall(**tool_call) for tool_call in tools_called]
         )
@@ -160,7 +162,7 @@ class MCPClientManager:
 
         return MCPResponse(
             sender="agent",
-            text=summarization.message.content,
+            text=summarization.message.content, # type: ignore
             is_tool_call=False,
         )
 

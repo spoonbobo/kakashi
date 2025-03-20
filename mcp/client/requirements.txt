@@ -9,3 +9,5 @@ dotenv
 websocket-client
 requests
 ollama
+scipy
+numpy

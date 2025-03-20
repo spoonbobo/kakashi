@@ -1,27 +1,18 @@
-import { Box, Text, VStack, Badge, Flex, IconButton, Spinner, Icon } from "@chakra-ui/react";
+import { Box, Text, VStack, Badge, Flex, IconButton, Spinner } from "@chakra-ui/react";
 import { useAuth } from "@/auth/context";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useRef } from "react";
 import { io, Socket } from "socket.io-client";
-import { FaSync } from 'react-icons/fa';
 import { Tooltip } from "@/components/tooltip";
 import { v4 as uuidv4 } from 'uuid';
+import { Notification } from "@/types/alert";
 
 const MotionBox = motion(Box);
-
-interface Notification {
-    id: string;
-    notification_id: string;
-    message: string;
-    sender: string;
-    timestamp: string;
-    priority: 'low' | 'medium' | 'high' | 'critical';
-    status: 'new' | 'acknowledged' | 'resolved';
-}
 
 export const NotifyPanel = () => {
     const { user: currentUser, isAuthenticated } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [socket, setSocket] = useState<Socket | null>(null);
     const [loading, setLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -267,20 +258,6 @@ export const NotifyPanel = () => {
         }
     };
 
-    const handleUpdateStatus = (notificationId: string, newStatus: 'acknowledged' | 'resolved') => {
-        if (!socket || !socket.connected) {
-            console.error('Socket not connected, cannot update status');
-            return;
-        }
-
-        socket.emit('update_notification_status', notificationId, newStatus);
-
-        // Optimistically update UI
-        setNotifications(prev => prev.map(notification =>
-            notification.notification_id === notificationId ? { ...notification, status: newStatus } : notification
-        ));
-    };
-
     const handleRefresh = async () => {
         if (!isAuthenticated) return;
         setIsRefreshing(true);
@@ -335,9 +312,8 @@ export const NotifyPanel = () => {
                     <Tooltip content="Refresh notifications">
                         <IconButton
                             aria-label="Refresh notifications"
-                            icon={isRefreshing ? <Spinner size="sm" /> : <FaSync />}
                             size="sm"
-                            isLoading={isRefreshing}
+                            loading={isRefreshing}
                             onClick={handleRefresh}
                             variant="ghost"
                         />
@@ -348,7 +324,6 @@ export const NotifyPanel = () => {
             {/* Notification List with Animations */}
             <VStack
                 align="stretch"
-                spacing={3}
                 height="calc(100% - 70px)"
                 overflowY="auto"
                 css={{

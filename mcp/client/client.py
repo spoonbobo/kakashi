@@ -11,13 +11,17 @@ import socket
 
 from api.mcp.routes import router as mcp_router
 from service.mcp_client import MCPClientManager
+from service.bypasser import Bypasser
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting MCP client")
     mcp_servers = json.load(open(os.getenv("MCP_SERVERS_JSON", ""))) or {}
+    mcp_servers = mcp_servers["mcpServers"]
+    bypasser = Bypasser(mcp_servers)
+    await bypasser.bypass([{"role": "assistant", "content": "How are you?"}], "what is the weather in new york?")
 
-    mcp_client_manager = MCPClientManager(mcp_servers)
+    mcp_client_manager = MCPClientManager(mcp_servers, bypasser)
     await mcp_client_manager.connect_to_servers()
 
     # Log network information for debugging
