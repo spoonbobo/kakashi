@@ -31,3 +31,4 @@ class MCPResponse(BaseModel):
     timestamp: str = Field(default_factory=lambda: str(datetime.now()))
     tools_called: List[MCPToolCall] = Field(default_factory=list)
     is_tool_call: bool = Field(default=False)
+    conversation: List[Dict[str, Any]] = Field(default_factory=list)

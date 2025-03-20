@@ -135,7 +135,8 @@ class MCPClientManager:
             text=",".join(descriptions),
             summarization=summarization.message.content, # type: ignore
             is_tool_call=True,
-            tools_called=[MCPToolCall(**tool_call) for tool_call in tools_called]
+            tools_called=[MCPToolCall(**tool_call) for tool_call in tools_called],
+            conversation=conversions + query,
         )
         return response
 

@@ -23,6 +23,8 @@ interface ChatMessage {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools_called: any[];
   summarization: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  conversation: any[];
 }
 
 export const setupChatServer = (httpServer: HttpServer) => {
@@ -164,6 +166,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
             task_id: taskId,
             room_id: roomId,
             tools_called: toolsCalled,
+            conversation: message.conversation
           });
           
           // Broadcast task creation event to all clients in the room
@@ -259,6 +262,8 @@ const createTask = async (taskData: {
   room_id: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools_called: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  conversation: any[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }): Promise<any> => {
   try {

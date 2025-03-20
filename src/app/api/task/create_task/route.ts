@@ -10,7 +10,8 @@ export async function POST(request: Request) {
             room_id, 
             task_id, 
             is_tool_call = false, 
-            tools_called = null 
+            tools_called = null,
+            conversation = null,
         } = await request.json();
         
         const result = await db('agent_task')
@@ -23,7 +24,8 @@ export async function POST(request: Request) {
                 status: 'pending',
                 result: null,
                 is_tool_call,
-                tools_called: tools_called ? JSON.stringify(tools_called) : null
+                tools_called: tools_called ? JSON.stringify(tools_called) : null,
+                conversation: conversation ? JSON.stringify(conversation) : null
             })
             .returning('*');
         

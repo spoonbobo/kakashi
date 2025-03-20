@@ -3,10 +3,6 @@
         "weather": {
             "description": "/servers/description/weather.md",
             "path": "/servers/weather.py"
-        },
-        "zabbix": {
-            "description": "/servers/description/zabbix.md",
-            "path": "/servers/zabbix.py"
         }
     }
 }
