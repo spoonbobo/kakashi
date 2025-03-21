@@ -355,7 +355,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
                 <Select.Content>
                   {statusOptions.items.map((option) => (
                     <Select.Item item={option} key={option.value}>
-                      {option.label}
+                      {t(option.label.toLowerCase())}
                       <Select.ItemIndicator />
                     </Select.Item>
                   ))}

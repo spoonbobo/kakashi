@@ -24,5 +24,13 @@
   "showing": "Showing",
   "of": "of",
   "tasks": "tasks",
-  "rows_per_page": "Rows per page"
+  "rows_per_page": "Rows per page",
+  "rooms": "Rooms",
+  "knowledge_base": "Knowledge Base",
+  "mcp_explorer": "MCP Explorer",
+  "new_chat": "New Chat",
+  "learn": "Learn",
+  "danger_zone": "Danger Zone",
+  "delete_all_rooms": "Delete All Chat Rooms",
+  "deleting": "Deleting..."
 } 

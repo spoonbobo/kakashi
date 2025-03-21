@@ -10,6 +10,7 @@ import { FiServer } from 'react-icons/fi';
 import { MCPResourceExplorer } from './mcp_explorer';
 import { KnowledgeBase } from './knowledge_base';
 import { FaBookOpen } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 
 const MotionBox = motion(Box);
 
@@ -26,6 +27,7 @@ interface LearnTabsProps {
 }
 
 export const LearnTabs: React.FC<LearnTabsProps> = ({ tabs }) => {
+    const { t } = useTranslation();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [activeTab, setActiveTab] = useState('mcp');
 
@@ -33,14 +35,14 @@ export const LearnTabs: React.FC<LearnTabsProps> = ({ tabs }) => {
     const tabsToRender = tabs || [
         {
             id: 'kb',
-            label: 'Knowledge Base',
+            label: t('knowledge_base'),
             icon: FaBookOpen,
             component: <KnowledgeBase />
         },
 
         {
             id: 'mcp',
-            label: 'MCP Explorer',
+            label: t('mcp_explorer'),
             icon: FiServer,
             component: <MCPResourceExplorer />
         }

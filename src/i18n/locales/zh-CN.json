@@ -47,5 +47,17 @@
     "task_completed_successfully": "任务完成成功",
     "task_execution_failed": "任务执行失败",
     "task_status_is": "任务状态是",
-    "task_has_been_denied": "任务已拒绝"
+    "task_has_been_denied": "任务已拒绝",
+    "rooms": "房间",
+    "knowledge_base": "知识库",
+    "mcp_explorer": "MCP 探索器",
+    "new_chat": "新聊天",
+    "learn": "学习",
+    "danger_zone": "危险区域",
+    "delete_all_rooms": "删除所有聊天室",
+    "deleting": "删除中...",
+    "all": "全部",
+    "started_at": "开始时间",
+    "completed_at": "完成时间",
+    "dashboard": "仪表盘"
   }

@@ -47,5 +47,17 @@
   "task_completed_successfully": "Nhiệm vụ hoàn thành thành công",
   "task_execution_failed": "Thực thi nhiệm vụ thất bại",
   "task_status_is": "Trạng thái nhiệm vụ là",
-  "task_has_been_denied": "Nhiệm vụ đã bị từ chối"
+  "task_has_been_denied": "Nhiệm vụ đã bị từ chối",
+  "rooms": "Phòng",
+  "knowledge_base": "Cơ sở kiến thức",
+  "mcp_explorer": "Trình khám phá MCP",
+  "new_chat": "Cuộc trò chuyện mới",
+  "learn": "Học tập",
+  "danger_zone": "Vùng nguy hiểm",
+  "delete_all_rooms": "Xóa tất cả các phòng trò chuyện",
+  "deleting": "Đang xóa...",
+  "all": "Tất cả",
+  "started_at": "Thời gian bắt đầu",
+  "completed_at": "Thời gian hoàn thành",
+  "dashboard": "Bảng điều khiển"
 }

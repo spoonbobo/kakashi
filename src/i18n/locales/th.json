@@ -47,5 +47,17 @@
   "task_completed_successfully": "งานเสร็จสิ้นเรียบร้อยแล้ว",
   "task_execution_failed": "การดำเนินงานล้มเหลว",
   "task_status_is": "สถานะงานคือ",
-  "task_has_been_denied": "งานถูกปฏิเสธแล้ว"
+  "task_has_been_denied": "งานถูกปฏิเสธแล้ว",
+  "rooms": "ห้อง",
+  "knowledge_base": "ฐานความรู้",
+  "mcp_explorer": "MCP ตัวตรวจสอบ",
+  "new_chat": "ห้องแชทใหม่",
+  "learn": "การศึกษา",
+  "danger_zone": "พื้นที่อันตราย",
+  "delete_all_rooms": "ลบทั้งหมดห้องแชท",
+  "deleting": "กำลังลบ...",
+  "all": "ทั้งหมด",
+  "started_at": "เริ่มเวลา",
+  "completed_at": "สำเร็จเวลา",
+  "dashboard": "หน้าแรก"
 }

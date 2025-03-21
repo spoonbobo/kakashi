@@ -5,6 +5,7 @@ import {
     FaTasks,
     FaPlus,
     FaBook,
+    FaChartLine,
 } from 'react-icons/fa';
 import { AuthPopover } from './auth/auth_popover';
 import { memo } from 'react';
@@ -16,15 +17,18 @@ interface NavbarProps {
     onApprovalsClick: () => void;
     onLearnClick: () => void;
     onFeedbackClick: () => void;
+    onDashboardClick: () => void;
 }
+import { useTranslation } from 'react-i18next';
 
 export const Navbar = memo(function Navbar({
     onConversationsClick,
     onNewChatClick,
     onTasksClick,
-    onLearnClick
+    onLearnClick,
+    onDashboardClick
 }: NavbarProps) {
-
+    const { t } = useTranslation();
     const handleNewChatClick = () => {
         window.dispatchEvent(new Event('newChat'));
         onNewChatClick();
@@ -56,7 +60,7 @@ export const Navbar = memo(function Navbar({
             </Flex>
 
             <HStack>
-                <Tooltip content="New Chat">
+                <Tooltip content={t('new_chat')}>
                     <IconButton
                         bg="transparent"
                         _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
@@ -69,7 +73,7 @@ export const Navbar = memo(function Navbar({
                     </IconButton>
                 </Tooltip>
 
-                <Tooltip content="Rooms">
+                <Tooltip content={t('rooms')}>
                     <IconButton
                         bg="transparent"
                         _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
@@ -81,7 +85,7 @@ export const Navbar = memo(function Navbar({
                         <Icon as={FaComment} />
                     </IconButton>
                 </Tooltip>
-                <Tooltip content="Tasks">
+                <Tooltip content={t('tasks')}>
                     <IconButton
                         bg="transparent"
                         _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
@@ -97,7 +101,19 @@ export const Navbar = memo(function Navbar({
             </HStack>
 
             <Flex align="center">
-                <Tooltip content="Learn">
+                <Tooltip content={t('dashboard')}>
+                    <IconButton
+                        bg="transparent"
+                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                        aria-label="Dashboard"
+                        onClick={onDashboardClick}
+                    >
+                        <Icon as={FaChartLine} />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip content={t('learn')}>
                     <IconButton
                         bg="transparent"
                         _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
@@ -109,7 +125,7 @@ export const Navbar = memo(function Navbar({
                         <Icon as={FaBook} />
                     </IconButton>
                 </Tooltip>
-                <Tooltip content="Settings">
+                <Tooltip content={t('settings')}>
                     <SettingsPopover />
                 </Tooltip>
                 <AuthPopover />

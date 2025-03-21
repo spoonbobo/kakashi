@@ -47,5 +47,17 @@
     "task_completed_successfully": "タスクは正常に完了しました",
     "task_execution_failed": "タスク実行に失敗しました",
     "task_status_is": "タスクのステータスは",
-    "task_has_been_denied": "タスクは拒否されました"
+    "task_has_been_denied": "タスクは拒否されました",
+    "rooms": "ルーム",
+    "knowledge_base": "知識ベース",
+    "mcp_explorer": "MCP エクスプローラー",
+    "new_chat": "新しいチャット",
+    "learn": "学習",
+    "danger_zone": "危険ゾーン",
+    "delete_all_rooms": "すべてのチャットルームを削除",
+    "deleting": "削除中...",
+    "all": "すべて",
+    "started_at": "開始時間",
+    "completed_at": "完了時間",
+    "dashboard": "ダッシュボード"
   }

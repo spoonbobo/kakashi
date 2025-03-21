@@ -47,5 +47,17 @@
     "task_completed_successfully": "작업이 성공적으로 완료되었습니다",
     "task_execution_failed": "작업 실행에 실패했습니다",
     "task_status_is": "작업 상태는",
-    "task_has_been_denied": "작업이 거부되었습니다"
+    "task_has_been_denied": "작업이 거부되었습니다",
+    "rooms": "방",
+    "knowledge_base": "지식 베이스",
+    "mcp_explorer": "MCP 탐색기",
+    "new_chat": "새 채팅",
+    "learn": "학습",
+    "danger_zone": "위험 영역",
+    "delete_all_rooms": "모든 채팅방 삭제",
+    "deleting": "삭제 중...",
+    "all": "모두",
+    "started_at": "시작 시간",
+    "completed_at": "완료 시간",
+    "dashboard": "대시보드"
   }

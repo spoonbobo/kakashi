@@ -22,6 +22,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<{ id: string; username: string; token: string; tokenCreatedAt: number } | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
+  // Token expiration constant (24 hours in milliseconds)
+  const TOKEN_EXPIRY = 24 * 60 * 60 * 1000;
+
   // Check if the stored token is valid on initial load
   useEffect(() => {
     const checkAuth = () => {
@@ -36,7 +39,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (userData.token && userData.tokenCreatedAt) {
             // Check token expiration
             const tokenAge = Date.now() - userData.tokenCreatedAt;
-            const TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
             if (tokenAge < TOKEN_EXPIRY) {
               setIsAuthenticated(true);
@@ -58,6 +60,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     checkAuth();
   }, []);
+
+  // Add auto logout effect that checks token expiration periodically
+  useEffect(() => {
+    if (!user) return;
+
+    const checkTokenExpiration = () => {
+      const tokenAge = Date.now() - user.tokenCreatedAt;
+      if (tokenAge >= TOKEN_EXPIRY) {
+        console.log('Token expired. Logging out automatically.');
+        logout();
+      }
+    };
+
+    // Check token expiration every minute
+    const intervalId = setInterval(checkTokenExpiration, 60 * 1000);
+
+    // Also calculate time until expiration and set a timeout for precise logout
+    const timeUntilExpiry = TOKEN_EXPIRY - (Date.now() - user.tokenCreatedAt);
+    const timeoutId = setTimeout(() => {
+      console.log('Token expired. Logging out automatically.');
+      logout();
+    }, Math.max(0, timeUntilExpiry));
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, [user]);
 
   const login = (userData: { id: string; username: string; token: string }) => {
     // Include token creation timestamp

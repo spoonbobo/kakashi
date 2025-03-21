@@ -15,7 +15,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Room } from "@/types/chat";
-
+import { useTranslation } from 'react-i18next';
 
 // Custom components to avoid spacing issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,6 +27,7 @@ const MotionBox = motion.create(Box);
 const ITEMS_PER_PAGE = 50;
 
 export const ListRooms = () => {
+  const { t } = useTranslation();
   const { isAuthenticated, authChecked } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
@@ -118,9 +119,9 @@ export const ListRooms = () => {
     <Flex direction="column" width="100%" height="100%" overflow="hidden">
       <Flex direction="column" px={6} py={4} borderBottom="1px solid" borderColor="gray.200">
         <Flex justify="space-between" align="center">
-          <Text fontSize="xl" fontWeight="bold">Rooms</Text>
+          <Text fontSize="xl" fontWeight="bold">{t('rooms')}</Text>
           <Flex align="center" gap={2}>
-            <Text fontSize="sm">Per page:</Text>
+            <Text fontSize="sm">{t('rows_per_page')}:</Text>
             <Select.Root
               size="sm"
               width="120px"
@@ -206,7 +207,7 @@ export const ListRooms = () => {
                 <VStack align="start" gap={1}>
                   <HStack justify="space-between" width="100%">
                     <Text fontWeight="medium">
-                      Room #{room.id}
+                      {t('room')} #{room.id}
                     </Text>
                     <Text fontSize="xs" color="gray.500">
                       {formatDistanceToNow(new Date(messageTime), { addSuffix: true })}
@@ -218,7 +219,7 @@ export const ListRooms = () => {
                     </Text>
                     {messageCount > 0 && (
                       <Badge colorScheme={isActive ? 'blue' : 'gray'} variant="subtle" fontSize="xs">
-                        {messageCount} message{messageCount !== 1 ? 's' : ''}
+                        {messageCount} {t('message')}
                       </Badge>
                     )}
                   </HStack>
@@ -236,7 +237,7 @@ export const ListRooms = () => {
 
         {!loading && !error && rooms.length === 0 && (
           <Text py={4} color="gray.500" textAlign="center">
-            No rooms yet
+            {t('no_rooms_yet')}
           </Text>
         )}
       </Box>
@@ -250,7 +251,7 @@ export const ListRooms = () => {
           borderColor="gray.200"
         >
           <Text fontSize="sm" color="gray.600">
-            Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalRooms)} of {totalRooms} rooms
+            {t('showing')} {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalRooms)} {t('of')} {totalRooms} {t('rooms')}
           </Text>
 
           <Flex gap={1} align="center">
@@ -282,7 +283,7 @@ export const ListRooms = () => {
             </Box>
 
             <Text mx={2} fontSize="sm">
-              Page {currentPage} of {totalPages || 1}
+              {t('page')} {currentPage} {t('of')} {totalPages || 1}
             </Text>
 
             <Box
