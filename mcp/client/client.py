@@ -7,7 +7,6 @@ load_dotenv()
 import uvicorn
 from fastapi import FastAPI
 from loguru import logger
-import socket
 
 from api.mcp.routes import router as mcp_router
 from service.mcp_client import MCPClientManager

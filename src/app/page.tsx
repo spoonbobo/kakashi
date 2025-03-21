@@ -13,16 +13,15 @@ import TaskLogger from '../components/task/task_logger';
 import ChatRoom from '../components/chat/chat_room';
 import { KnowledgeBase } from '../components/kb/knowledge_base';
 import { NotifyPanel } from '../components/alert/notify_panel';
-import { Help } from '../components/help/help';
 import "./globals.css"
-
+import { LearnTabs } from '../components/learn/learn';
 
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [time, setTime] = useState<string>('');
-  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'conversations' | 'help' | 'feedback' | 'knowledge_base'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'conversations' | 'learn' | 'feedback' | 'knowledge_base'>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -41,7 +40,7 @@ export default function Home() {
         setActiveView('conversations');
         setSessionId(null);
       } else if (view) {
-        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'help' | 'feedback' | 'knowledge_base');
+        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'learn' | 'feedback' | 'knowledge_base');
         setSessionId(null);
       }
     };
@@ -94,8 +93,8 @@ export default function Home() {
     setActiveView('tasks');
   };
 
-  const handleHelpClick = () => {
-    setActiveView('help');
+  const handleLearnClick = () => {
+    setActiveView('learn');
   };
 
   const handleFeedbackClick = () => {
@@ -139,7 +138,7 @@ export default function Home() {
         onConversationsClick={handleConversationsClick}
         onNewChatClick={handleNewChatClick}
         onTasksClick={handleTasksClick}
-        onHelpClick={handleHelpClick}
+        onLearnClick={handleLearnClick}
         onFeedbackClick={handleFeedbackClick}
         onKnowledgeBaseClick={handleKnowledgeBaseClick}
         onApprovalsClick={() => { }}
@@ -173,7 +172,7 @@ export default function Home() {
                   />}
                 /> :
                   activeView === 'knowledge_base' ? <KnowledgeBase /> :
-                    activeView === 'help' ? <Help /> :
+                    activeView === 'learn' ? <LearnTabs /> :
                       <ListRooms />
           }
           rightComponent={

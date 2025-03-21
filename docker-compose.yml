@@ -119,6 +119,7 @@ services:
     volumes:
       - ./mcp/client:/app
       - ./mcp/servers:/servers
+      - ./mcp/agent_home:/agent_home
     environment:
       - SOCKET_URL=${NEXT_PUBLIC_WS_URL}
       - CLIENT_URL=${CLIENT_URL}

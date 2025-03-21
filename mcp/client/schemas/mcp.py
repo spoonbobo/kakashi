@@ -9,6 +9,16 @@ class MessageHistory(BaseModel):
     text: str
     timestamp: str
 
+class MCPTool(BaseModel):
+    name: str
+    description: str
+    input_schema: Dict[str, Any]
+
+class MCPServer(BaseModel):
+    server_name: str
+    server_description: str
+    server_tools: List[MCPTool]
+
 class MCPAccess(BaseModel):
     sender: str
     room_id: str

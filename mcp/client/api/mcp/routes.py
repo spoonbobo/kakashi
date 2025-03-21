@@ -78,3 +78,7 @@ async def approve(request: Request, approval: List[MCPToolCall]):
 
     await app_client.disconnect()
     return "ok"
+
+@router.get("/api/app/get_servers")
+async def get_servers(request: Request):
+    return await request.app.state.mcp_client_manager.get_servers()

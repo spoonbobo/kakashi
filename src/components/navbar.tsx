@@ -2,11 +2,9 @@ import { Box, HStack, Text, Icon, Flex, IconButton } from '@chakra-ui/react';
 import { Tooltip } from "@/components/tooltip"
 import {
     FaCog,
-    // FaCheck,
     FaComment,
     FaTasks,
     FaPlus,
-    FaQuestionCircle,
     FaBook,
     FaBookOpen
 } from 'react-icons/fa';
@@ -18,7 +16,7 @@ interface NavbarProps {
     onNewChatClick: () => void;
     onTasksClick: () => void;
     onApprovalsClick: () => void;
-    onHelpClick: () => void;
+    onLearnClick: () => void;
     onFeedbackClick: () => void;
     onKnowledgeBaseClick: () => void;
 }
@@ -28,7 +26,7 @@ export const Navbar = memo(function Navbar({
     onNewChatClick,
     onTasksClick,
     onKnowledgeBaseClick,
-    onHelpClick
+    onLearnClick
 }: NavbarProps) {
 
     const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
@@ -115,23 +113,23 @@ export const Navbar = memo(function Navbar({
                         aria-label="Knowledge Base"
                         onClick={handleKnowledgeBaseClick}
                     >
-                        <Icon as={isKnowledgeBaseOpen ? FaBookOpen : FaBook} />
+                        <Icon as={FaBookOpen} />
                     </IconButton>
                 </Tooltip>
 
             </HStack>
 
             <Flex align="center">
-                <Tooltip content="Help">
+                <Tooltip content="Learn">
                     <IconButton
                         bg="transparent"
                         _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
                         _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
                         _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                        aria-label="Help"
-                        onClick={onHelpClick}
+                        aria-label="Learn"
+                        onClick={onLearnClick}
                     >
-                        <Icon as={FaQuestionCircle} />
+                        <Icon as={FaBook} />
                     </IconButton>
                 </Tooltip>
                 <Tooltip content="Settings">

@@ -30,21 +30,21 @@ class Bypasser:
         ):
         self.servers = servers
         self.server_names = list(self.servers.keys())
-        self.server_descriptions = {}
+        self.server_descriptions_dict: Dict[str, str] = {}
         self.ollama_client = Client(host=os.getenv("OLLAMA_API_BASE_URL"))
         self.ollama_model = os.getenv("BYPASSER_MODEL", "")
         self.embed_model = os.getenv("EMBED_MODEL", "")
 
         for server in self.servers:
-            self.server_descriptions[server] = self.load_server_description(self.servers[server]["description"])
+            self.server_descriptions_dict[server] = self.load_server_description(self.servers[server]["description"])
 
         self.server_embeddings = self.embed_server_descriptions()
-        self.server_descriptions = self.format_server_descriptions()
+        self.server_descriptions_str = self.format_server_descriptions()
 
     def embed_server_descriptions(self) -> np.ndarray:
         embeddings = []
         for server_name in self.server_names:
-            description = self.server_descriptions[server_name]
+            description = self.server_descriptions_dict[server_name]
             embedding = self.ollama_client.embed(
                 model=self.embed_model,
                 input=description
@@ -58,14 +58,14 @@ class Bypasser:
 
     def format_server_descriptions(self) -> str:
         return "\n" + "\n".join([
-            f"Server {idx + 1}: {server}\n=================\n{self.server_descriptions[server]}\n" 
+            f"Server {idx + 1}: {server}\n=================\n{self.server_descriptions_dict[server]}\n" 
             for idx, server in enumerate(self.server_names)])
 
     async def bypass(self, messages: List[Dict[str, str]], query: str) -> str:
         prompt = self.bypass_prompt.format(
             conversation_history=messages,
             user_query=query,
-            server_descriptions=self.server_descriptions
+            server_descriptions=self.server_descriptions_str
         )
         
         response = self.ollama_client.chat(
@@ -87,3 +87,7 @@ class Bypasser:
         return selected_server
 
 
+class Planner:
+    """
+    """
+    pass

@@ -1,6 +1,6 @@
 import dotenv
 from contextlib import AsyncExitStack
-from typing import List
+from typing import List, Dict
 import os
 
 dotenv.load_dotenv()
@@ -10,8 +10,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.types import Tool as mcp_tool
 from mcp.client.stdio import stdio_client
 
-
-from schemas.mcp import MCPAccess, MCPResponse, MCPToolCall
+from schemas.mcp import MCPAccess, MCPResponse, MCPToolCall, MCPTool, MCPServer
 from service.bypasser import Bypasser
 
 class MCPClientManager:
@@ -84,6 +83,7 @@ class MCPClientManager:
 
         byp_mcp_server = await self.bypasser.bypass(conversions, query[0]["content"])
         server = self.servers[byp_mcp_server]
+        server_description = self.bypasser.server_descriptions_dict[byp_mcp_server]
 
         tools = await server.list_tools()
         tools = tools.tools
@@ -95,7 +95,7 @@ class MCPClientManager:
 
         llm_response = self.ollama_client.chat(
             model=self.ollama_model,
-            messages=conversions + query,
+            messages=[{"role": "system", "content": server_description}] + conversions + query,
             tools=ollama_tools,
         )
         
@@ -118,9 +118,10 @@ class MCPClientManager:
             "content": f"""
             Give a brief goal statement of how you (agent) will use the tools {tools_called} to achieve the goal of the query {query}.
             (description: {descriptions})
-            
-            Example response template:
-            "Use... to .... "
+            server_information[server] = {
+                "server_description": server_info["description"],
+                "server_tools": server_info["tools"],
+            }
             """
         }
         
@@ -167,6 +168,44 @@ class MCPClientManager:
             text=summarization.message.content, # type: ignore
             is_tool_call=False,
         )
+
+    async def get_servers(self) -> Dict[str, MCPServer]:
+        server_information = {}
+        for server_name, server_session in self.servers.items():
+            try:
+                server_description = self.bypasser.server_descriptions_dict[server_name]
+                server_tools_response = await server_session.list_tools()
+                server_tools = server_tools_response.tools
+                
+                mcp_tools = []
+                for tool in server_tools:
+                    try:
+                        input_schema = tool.inputSchema
+                        if hasattr(input_schema, "dict"):
+                            input_schema = input_schema.dict()
+                        elif hasattr(input_schema, "model_dump"):
+                            input_schema = input_schema.model_dump()
+                            
+                        mcp_tool = MCPTool(
+                            name=tool.name,
+                            description=tool.description,
+                            input_schema=input_schema
+                        )
+                        mcp_tools.append(mcp_tool)
+                    except Exception as e:
+                        logger.error(f"Error creating MCPTool: {e}")
+                        continue
+                
+                server_information[server_name] = MCPServer(
+                    server_name=server_name,
+                    server_description=server_description,
+                    server_tools=mcp_tools,
+                )   
+            except Exception as e:
+                logger.error(f"Error processing server {server_name}: {e}")
+                continue
+                
+        return server_information
 
     async def cleanup(self):
         for server in self.servers:

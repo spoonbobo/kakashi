@@ -3,6 +3,10 @@
         "weather": {
             "description": "/servers/description/weather.md",
             "path": "/servers/weather.py"
+        },
+        "web_fetcher": {
+            "description": "/servers/description/web_fetcher.md",
+            "path": "/servers/web_fetcher.py"
         }
     }
 }
