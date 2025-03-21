@@ -3,6 +3,7 @@ import { Input, Flex, IconButton, Box } from "@chakra-ui/react";
 import { FaPaperPlane } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { User } from "@/types/chat";
+import { useTranslation } from 'react-i18next';
 
 const MotionBox = motion(Box);
 
@@ -35,6 +36,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     agents,
     currentUser
 }) => {
+    const { t } = useTranslation();
     const [mentionState, setMentionState] = useState<MentionState>({
         isActive: false,
         startPosition: 0,
@@ -158,7 +160,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <Box p={4} mb="60px">
             <Flex gap={2} position="relative">
                 <Input
-                    placeholder="Type your message..."
+                    placeholder={t('type_your_message')}
                     value={message}
                     onChange={handleMessageChange}
                     onKeyDown={handleKeyPress}

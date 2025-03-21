@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/auth/context";
 import { v4 as uuidv4 } from 'uuid';
 import { ChatInput } from "@/components/chat/chat_input";
+import { useTranslation } from 'react-i18next';
 
 const MotionBox = motion.create(Box);
 const MotionFlex = motion.create(Flex);
@@ -35,6 +36,7 @@ const messageVariants = {
 };
 
 export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
+  const { t } = useTranslation();
   const { user: currentUser, isAuthenticated } = useAuth();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -115,7 +117,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
 
     socket.on('room_created', (data: { roomId: string }) => {
       roomIdRef.current = data.roomId;
-      setRoomName(`Chat Room #${data.roomId.substring(0, 8)}`);
+      setRoomName(`${t('chat_room')} #${data.roomId.substring(0, 8)}`);
       const url = new URL(window.location.href);
       url.searchParams.set('roomId', data.roomId);
       window.history.pushState({}, '', url.toString());
@@ -310,7 +312,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
         </Text>
         <Flex mt={2}>
           <Text fontSize="sm" color="gray.500" mr={2}>
-            Active Users ({users.length}):
+            {t('active_users')}: ({users.length})
           </Text>
           <Text fontSize="sm" color="gray.700">
             {users.map(user => user.username).join(', ')}

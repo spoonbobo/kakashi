@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { Box, Text, Flex, Input, Tabs, IconButton, Icon } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/auth/context';
@@ -12,6 +12,7 @@ import { Task } from '@/types/task';
 import TaskStatusBadge from './task_status_badge';
 import TaskTimestamps from './task_timestamps';
 import TaskIdDisplay from './task_id_display';
+import { useTranslation } from 'react-i18next';
 
 interface TaskLoggerProps {
   title?: string;
@@ -26,10 +27,12 @@ const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
 
 const TaskMetadata = ({ task }: { task: Task }) => {
+  const { t } = useTranslation();
+
   if (!task) {
     return (
       <Box p={5} textAlign="center" m={4}>
-        <Text color="gray.600" fontSize={{ base: "md", md: "lg" }}>No task selected</Text>
+        <Text color="gray.600" fontSize={{ base: "md", md: "lg" }}>{t('no_task_selected')}</Text>
       </Box>
     );
   }
@@ -38,7 +41,7 @@ const TaskMetadata = ({ task }: { task: Task }) => {
     <Flex direction="column" gap={4}>
       {task.summarization && (
         <Box width="100%">
-          <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>Summarization</Text>
+          <Text fontSize={{ base: "sm", md: "md" }} color="gray.600" mb={1}>{t('summarization')}</Text>
           <Text fontSize={{ base: "sm", md: "md" }} fontWeight="medium" whiteSpace="pre-wrap">
             {task.summarization}
           </Text>
@@ -138,6 +141,7 @@ const TaskActionButtons = ({
   onApprove: () => void,
   onDeny: () => void
 }) => {
+  const { t } = useTranslation();
   const isTaskSelected = !!task;
   const isTaskPending = task?.status === 'pending';
   const isTaskApproved = task?.status === 'approved';
@@ -150,14 +154,14 @@ const TaskActionButtons = ({
 
   // Helper function to get appropriate tooltip message
   const getTooltipMessage = () => {
-    if (!isTaskSelected) return "No task selected";
-    if (isTaskDenied) return "Task has been denied";
-    if (isTaskPostApproval) return "Task has been approved";
-    if (isTaskRunning) return "Task is currently running";
-    if (isTaskSuccessful) return "Task completed successfully";
-    if (isTaskFailed) return "Task execution failed";
-    if (!isTaskPending) return `Task status is ${task.status}`;
-    if (isProcessingAction) return "Processing...";
+    if (!isTaskSelected) return t('no_task_selected');
+    if (isTaskDenied) return t('task_has_been_denied');
+    if (isTaskPostApproval) return t('task_has_been_approved');
+    if (isTaskRunning) return t('task_is_currently_running');
+    if (isTaskSuccessful) return t('task_completed_successfully');
+    if (isTaskFailed) return t('task_execution_failed');
+    if (!isTaskPending) return t('task_status_is') + task.status;
+    if (isProcessingAction) return t('processing');
     return "";
   };
 
@@ -277,11 +281,12 @@ const TaskSidebar = ({
   </Box>
 );
 
-const TaskLogger: React.FC<TaskLoggerProps> = ({
+const TaskLogger: React.FC<TaskLoggerProps> = memo(function TaskLogger({
   task,
   onApprove,
   onDeny
-}) => {
+}) {
+  const { t } = useTranslation();
   const { isAuthenticated, user } = useAuth();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_priority, _setPriority] = useState("High");
@@ -584,7 +589,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
         justifyContent="center"
         p={5}
       >
-        <Text color="gray.500" fontSize="lg">No task selected</Text>
+        <Text color="gray.500" fontSize="lg">{t('no_task_selected')}</Text>
       </Box>
     );
   }
@@ -703,7 +708,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                     _hover={{ color: 'gray.800' }}
                     _selected={{ color: 'blue.600', borderBottom: '2px solid', borderColor: 'blue.600' }}
                   >
-                    {tab}
+                    {t(tab.toLowerCase())}
                   </Tabs.Trigger>
                 ))}
               </Tabs.List>
@@ -760,7 +765,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
                     {localTask ? (
                       <TaskDescription description={localTask.description} />
                     ) : (
-                      <Text color="gray.600">No task selected</Text>
+                      <Text color="gray.600">{t('no_task_selected')}</Text>
                     )}
                   </MotionBox>
                 </Tabs.Content>
@@ -858,6 +863,6 @@ const TaskLogger: React.FC<TaskLoggerProps> = ({
       )}
     </Box>
   );
-};
+});
 
 export default TaskLogger;

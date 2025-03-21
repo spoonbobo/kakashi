@@ -1,7 +1,6 @@
 import { Box, HStack, Text, Icon, Flex, IconButton } from '@chakra-ui/react';
 import { Tooltip } from "@/components/tooltip"
 import {
-    FaCog,
     FaComment,
     FaTasks,
     FaPlus,
@@ -9,7 +8,7 @@ import {
 } from 'react-icons/fa';
 import { AuthPopover } from './auth/auth_popover';
 import { memo } from 'react';
-
+import { SettingsPopover } from './settings/settings_popover';
 interface NavbarProps {
     onConversationsClick: () => void;
     onNewChatClick: () => void;
@@ -111,15 +110,7 @@ export const Navbar = memo(function Navbar({
                     </IconButton>
                 </Tooltip>
                 <Tooltip content="Settings">
-                    <IconButton
-                        bg="transparent"
-                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                        aria-label="Settings"
-                    >
-                        <Icon as={FaCog} />
-                    </IconButton>
+                    <SettingsPopover />
                 </Tooltip>
                 <AuthPopover />
             </Flex>

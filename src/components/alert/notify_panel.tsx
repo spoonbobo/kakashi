@@ -6,10 +6,12 @@ import { io, Socket } from "socket.io-client";
 import { Tooltip } from "@/components/tooltip";
 import { v4 as uuidv4 } from 'uuid';
 import { Notification } from "@/types/alert";
+import { useTranslation } from 'react-i18next';
 
 const MotionBox = motion(Box);
 
 export const NotifyPanel = () => {
+    const { t } = useTranslation();
     const { user: currentUser, isAuthenticated } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -302,7 +304,7 @@ export const NotifyPanel = () => {
         >
             <Flex justifyContent="space-between" alignItems="center" mb={4}>
                 <Text fontSize="xl" fontWeight="bold" textAlign="left">
-                    Notifications {notifications.length > 0 &&
+                    {t('notifications')}{notifications.length > 0 &&
                         <Text as="span" fontSize="md" color="gray.500">({notifications.length})</Text>}
                 </Text>
                 <Flex gap={2} alignItems="center">
@@ -350,7 +352,7 @@ export const NotifyPanel = () => {
                     </Flex>
                 ) : notifications.length === 0 ? (
                     <Flex justify="center" align="center" height="100px">
-                        <Text color="gray.500">No notifications at this time.</Text>
+                        <Text color="gray.500">{t('no_notifications')}</Text>
                     </Flex>
                 ) : (
                     <AnimatePresence initial={false}>
@@ -384,7 +386,7 @@ export const NotifyPanel = () => {
                                 <Flex direction="column" w="100%">
                                     {notification.sender && (
                                         <Text fontSize="xs" fontWeight="medium" color="gray.600" mb={1}>
-                                            From: {notification.sender}
+                                            {t('from')}: {notification.sender}
                                         </Text>
                                     )}
                                     <Text fontWeight="normal" mb={1}>{notification.message}</Text>

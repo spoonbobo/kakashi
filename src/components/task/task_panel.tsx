@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/context';
 import { TaskBox } from '@/components/task/task_box';
 import { FaSync } from 'react-icons/fa';
 import TaskStatusBadge from './task_status_badge';
+import { useTranslation } from 'react-i18next';
 
 interface AgentTaskPanelProps {
   title?: string;
@@ -16,9 +17,9 @@ interface AgentTaskPanelProps {
 const MotionBox = motion.create(Box);
 
 const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
-  title = "Recent Tasks",
   onTaskSelect
 }) => {
+  const { t } = useTranslation();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tasks, setTasks] = useState<any[]>([]);
   // Track newly added tasks for animation
@@ -243,7 +244,7 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
     >
       <Flex justifyContent="space-between" alignItems="center" mb={4}>
         <Text fontSize="xl" fontWeight="bold" textAlign="left">
-          {title} {tasks.length > 0 && <Text as="span" fontSize="md" color="gray.500">({tasks.length})</Text>}
+          {t('recent_tasks')} {tasks.length > 0 && <Text as="span" fontSize="md" color="gray.500">({tasks.length})</Text>}
         </Text>
         <Tooltip content="Refresh tasks">
           <IconButton

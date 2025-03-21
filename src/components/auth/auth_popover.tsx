@@ -57,7 +57,15 @@ export const AuthPopover = memo(() => {
   return (
     <Popover.Root>
       <Popover.Trigger asChild>
-        <IconButton variant="outline" aria-label="Login">
+        <IconButton
+          variant="ghost"
+          aria-label="Login"
+          color="white"
+          bg="transparent"
+          _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+          _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+          _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+        >
           {isAuthenticated ? <Icon as={FaSignOutAlt} /> : <Icon as={FaSignInAlt} />}
         </IconButton>
       </Popover.Trigger>

@@ -1,7 +1,7 @@
 // metadata: 
 import {
   Box, Text, VStack, HStack, Input, Button, Flex,
-  Icon, Badge, Heading, IconButton,
+  Icon, Badge, Heading,
   Tag, Spinner
 } from "@chakra-ui/react";
 
@@ -10,10 +10,8 @@ import { motion, HTMLMotionProps, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
   FiUpload, FiSearch, FiFolder, FiFile, FiFileText,
-  FiClock, FiInfo, FiExternalLink,
-  FiChevronUp,
+  FiClock, FiInfo,
 } from "react-icons/fi";
-import { Tooltip } from "@/components/tooltip";
 
 // Define MotionBox component with proper typing
 const MotionBox = motion(Box) as React.FC<Omit<React.ComponentProps<typeof Box>, "transition"> & HTMLMotionProps<"div">>;
@@ -24,7 +22,6 @@ export const KnowledgeBase = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
   const [isUploading, setIsUploading] = useState(false);
 
   // Sample document data for UI mockup
@@ -66,17 +63,6 @@ export const KnowledgeBase = () => {
     { id: "recent", name: "Recently Added", count: 3, icon: FiClock },
     { id: "upload", name: "Upload Document", count: 0, icon: FiUpload },
   ];
-
-
-  const toggleDocExpansion = (docId: string) => {
-    const newExpandedDocs = new Set(expandedDocs);
-    if (expandedDocs.has(docId)) {
-      newExpandedDocs.delete(docId);
-    } else {
-      newExpandedDocs.add(docId);
-    }
-    setExpandedDocs(newExpandedDocs);
-  };
 
   // Filter documents based on search and category
   const filteredDocuments = sampleDocuments.filter(doc => {
@@ -151,7 +137,7 @@ export const KnowledgeBase = () => {
               <Icon as={FiSearch} color={searchFocused ? "blue.400" : "gray.400"} transition="color 0.2s" />
             </Box>
             <Input
-              placeholder="Search documents..."
+              placeholder="What are you looking for in here?"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
@@ -251,30 +237,29 @@ export const KnowledgeBase = () => {
         >
           {selectedCategory !== "upload" ? (
             <>
-              <MotionBox
+              {/* <Box
                 mb={2}
-                p={2}
-                bg="blue.50"
                 borderRadius="md"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                transition={{ duration: 0.3 } as any}
-                key={selectedCategory}
               >
-                <Heading size="sm" mb={1}>
-                  {categories.find(c => c.id === selectedCategory)?.name || "All Documents"}
-                </Heading>
-                <Text fontSize="xs">
-                  {selectedCategory === "all"
-                    ? "All available documents in your knowledge base"
-                    : selectedCategory === "ai"
-                      ? "Documents related to AI and machine learning"
-                      : selectedCategory === "database"
-                        ? "Documents about database design and management"
-                        : "Recently added documents"}
-                </Text>
-              </MotionBox>
+                <Flex alignItems="center">
+                  <Input
+                    placeholder="What are you looking for in here?"
+                    size="md"
+                    bg="white"
+                    borderColor="gray.200"
+                    _hover={{ borderColor: "blue.300" }}
+                    _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px var(--chakra-colors-blue-400)" }}
+                    mr={2}
+                  />
+                  <IconButton
+                    aria-label="Ask"
+                    colorScheme="blue"
+                    borderRadius="full"
+                  >
+                    <Icon as={FaPaperPlane} />
+                  </IconButton>
+                </Flex>
+              </Box> */}
 
               <VStack
                 align="stretch"
@@ -290,10 +275,8 @@ export const KnowledgeBase = () => {
                 }}
               >
                 <AnimatePresence>
-                  {filteredDocuments.map((doc, index) => {
-                    const isExpanded = expandedDocs.has(doc.id);
-
-                    return (
+                  <Flex flexWrap="wrap" gap={4} p={1}>
+                    {filteredDocuments.map((doc, index) => (
                       <motion.div
                         key={doc.id}
                         initial={{ opacity: 0, y: 20 }}
@@ -303,9 +286,10 @@ export const KnowledgeBase = () => {
                           delay: 0.05 * index,
                           ease: "easeOut"
                         }}
+                        style={{ width: 'calc(33.33% - 11px)' }}
                       >
                         <MotionBox
-                          p={3}
+                          p={4}
                           borderRadius="md"
                           bg="white"
                           border="1px"
@@ -313,67 +297,52 @@ export const KnowledgeBase = () => {
                           boxShadow="sm"
                           _hover={{ boxShadow: "md", borderColor: "blue.200" }}
                           transition={{ duration: 0.3 }}
+                          height="180px"
+                          display="flex"
+                          flexDirection="column"
+                          position="relative"
+                          overflow="hidden"
+                          whileHover={{ y: -4 }}
                         >
-                          <Flex justifyContent="space-between" mb={2}>
-                            <HStack>
-                              <Icon
-                                as={doc.type === "PDF" ? FiFileText : FiFile}
-                                color={doc.type === "PDF" ? "red.500" : "blue.500"}
-                                w={4}
-                                h={4}
-                              />
-                              <Heading size="sm" color="blue.700">{doc.title}</Heading>
-                              <Badge colorScheme={doc.type === "PDF" ? "red" : "blue"} fontSize="xs">{doc.type}</Badge>
-                            </HStack>
-                            <Tooltip content={isExpanded ? "Hide details" : "Show details"}>
-                              <IconButton
-                                size="xs"
-                                variant="ghost"
-                                onClick={() => toggleDocExpansion(doc.id)}
-                                aria-label={isExpanded ? "Hide details" : "Show details"}
-                                colorScheme="blue"
-                              >
-                                <Icon as={!isExpanded ? FiExternalLink : FiChevronUp} />
-                              </IconButton>
-                            </Tooltip>
+                          <Flex justifyContent="space-between" mb={3}>
+                            <Icon
+                              as={doc.type === "PDF" ? FiFileText : FiFile}
+                              color={doc.type === "PDF" ? "red.500" : "blue.500"}
+                              w={5}
+                              h={5}
+                            />
+                            <Badge colorScheme={doc.type === "PDF" ? "red" : "blue"} fontSize="xs">{doc.type}</Badge>
                           </Flex>
 
-                          <Flex justify="space-between" mb={2}>
+                          <Heading size="sm" color="blue.700" mb={2}>{doc.title}</Heading>
+
+                          <Text fontSize="sm" color="gray.600" mb={3} flex="1">
+                            {doc.description}
+                          </Text>
+
+                          <Flex justify="space-between" align="center" mt="auto">
                             <Text fontSize="xs" color="gray.500">
                               <Icon as={FiClock} mr={1} />
                               {doc.date}
                             </Text>
-                            <Text fontSize="xs" color="gray.500">{doc.source}</Text>
+
+                            <Flex wrap="wrap" gap={1} justify="flex-end">
+                              {doc.tags.slice(0, 2).map((tag, idx) => (
+                                <Tag.Root key={idx} size="sm" colorScheme="blue" variant="subtle">
+                                  <Tag.Label fontSize="xs">{tag}</Tag.Label>
+                                </Tag.Root>
+                              ))}
+                              {doc.tags.length > 2 && (
+                                <Tag.Root size="sm" colorScheme="gray" variant="subtle">
+                                  <Tag.Label fontSize="xs">+{doc.tags.length - 2}</Tag.Label>
+                                </Tag.Root>
+                              )}
+                            </Flex>
                           </Flex>
-
-                          <Flex wrap="wrap" gap={1} mb={isExpanded ? 3 : 0}>
-                            {doc.tags.map((tag, idx) => (
-                              <Tag.Root key={idx} size="sm" colorScheme="blue" variant="subtle">
-                                <Tag.Label fontSize="xs">{tag}</Tag.Label>
-                              </Tag.Root>
-                            ))}
-                          </Flex>
-
-                          {/* Expanded content */}
-                          {isExpanded && (
-                            <Box
-                              mt={3}
-                              pt={3}
-                              borderTop="1px"
-                              borderColor="gray.200"
-                            >
-                              <Text whiteSpace="pre-wrap" mb={3} color="gray.700" fontSize="sm">{doc.description}</Text>
-
-                              <Box mt={3} p={2} bg="blue.50" borderRadius="md" fontSize="xs">
-                                <Heading size="xs" mb={1} color="blue.700">Usage Hint</Heading>
-                                <Text fontSize="xs">This document can be used as a knowledge source for AI queries.</Text>
-                              </Box>
-                            </Box>
-                          )}
                         </MotionBox>
                       </motion.div>
-                    );
-                  })}
+                    ))}
+                  </Flex>
                 </AnimatePresence>
               </VStack>
             </>
@@ -418,6 +387,6 @@ export const KnowledgeBase = () => {
           )}
         </Box>
       </MotionFlex>
-    </MotionBox>
+    </MotionBox >
   );
 };

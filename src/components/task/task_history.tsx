@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import { Task } from "@/types/task";
 import TaskStatusBadge from './task_status_badge';
+import { useTranslation } from 'react-i18next';
 
 const MotionBox = motion(Box);
 
@@ -14,6 +15,7 @@ interface TasksProps {
 }
 
 export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
+  const { t } = useTranslation();
   const { isAuthenticated, authChecked } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -326,9 +328,9 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
         flexDirection={{ base: "column", md: "row" }}
         gap={2}
       >
-        <Text fontSize="xl" fontWeight="bold" textAlign="left">Task History</Text>
+        <Text fontSize="xl" fontWeight="bold" textAlign="left">{t('task_history')}</Text>
         <Flex gap={2} alignItems="center" flexWrap="wrap">
-          <Text fontSize="sm">Status:</Text>
+          <Text fontSize="sm">{t('status')}:</Text>
           <Select.Root
             size="sm"
             width="150px"
@@ -376,11 +378,11 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
             <Table.Root variant="outline" size="md" colorScheme="gray">
               <Table.Header bg="gray.50" position="sticky" top={0} zIndex={1}>
                 <Table.Row>
-                  <Table.ColumnHeader fontWeight="semibold" width={{ base: "20%", md: "10%" }}>ID</Table.ColumnHeader>
-                  <Table.ColumnHeader fontWeight="semibold" width={{ base: "25%", md: "15%" }}>Role</Table.ColumnHeader>
-                  <Table.ColumnHeader fontWeight="semibold" width={{ base: "55%", md: "45%" }}>Summarization</Table.ColumnHeader>
-                  <Table.ColumnHeader fontWeight="semibold" width="20%" display={{ base: "none", md: "table-cell" }}>Created</Table.ColumnHeader>
-                  <Table.ColumnHeader fontWeight="semibold" width="10%" textAlign="center">Status</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="semibold" width={{ base: "20%", md: "10%" }}>{t('id')}</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="semibold" width={{ base: "25%", md: "15%" }}>{t('role')}</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="semibold" width={{ base: "55%", md: "45%" }}>{t('summarization')}</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="semibold" width="20%" display={{ base: "none", md: "table-cell" }}>{t('created_at')}</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="semibold" width="10%" textAlign="center">{t('status')}</Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
               <Table.Body>
@@ -416,7 +418,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
             gap={3}
           >
             <Flex alignItems="center" gap={2}>
-              <Text fontSize="sm">Rows per page:</Text>
+              <Text fontSize="sm">{t("rows_per_page")}:</Text>
               <Select.Root
                 size="sm"
                 width="120px"
@@ -477,7 +479,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
               </Box>
 
               <Text mx={2} fontSize="sm">
-                Page {currentPage} of {totalPages || 1}
+                {t('page')} {currentPage} {t('of')} {totalPages || 1}
               </Text>
 
               <Box
@@ -511,7 +513,7 @@ export const Tasks: React.FC<TasksProps> = ({ onTaskSelect }) => {
             </Flex>
 
             <Text fontSize="sm" color="gray.600">
-              Showing {tasks.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, totalTasks)} of {totalTasks} tasks
+              {t('showing')} {tasks.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, totalTasks)} {t('of')} {totalTasks} {t('tasks')}
             </Text>
           </Flex>
         </>

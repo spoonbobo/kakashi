@@ -118,10 +118,10 @@ class MCPClientManager:
             "content": f"""
             Give a brief goal statement of how you (agent) will use the tools {tools_called} to achieve the goal of the query {query}.
             (description: {descriptions})
-            server_information[server] = {
-                "server_description": server_info["description"],
-                "server_tools": server_info["tools"],
-            }
+            server_information = {{
+                "server_description": "{server_description}",
+                "server_tools": "{[tool.name for tool in tools]}"
+            }}
             """
         }
         

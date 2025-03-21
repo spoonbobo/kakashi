@@ -1,6 +1,6 @@
 import React from 'react';
 import { Flex } from '@chakra-ui/react';
-
+import { useTranslation } from 'react-i18next';
 interface TaskStatusBadgeProps {
     status: string;
     size?: 'sm' | 'md' | 'lg';
@@ -10,6 +10,7 @@ export const TaskStatusBadge: React.FC<TaskStatusBadgeProps> = ({
     status,
     size = 'md'
 }) => {
+    const { t } = useTranslation();
     // Determine font size based on size prop
     const fontSize = size === 'sm' ? 'xx-small' :
         size === 'md' ? 'xs' : 'sm';
@@ -48,7 +49,7 @@ export const TaskStatusBadge: React.FC<TaskStatusBadgeProps> = ({
             mr={1}
             minWidth={size === 'sm' ? '50px' : '70px'}
         >
-            {status}
+            {t(status)}
         </Flex>
     );
 };
