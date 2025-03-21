@@ -7,7 +7,9 @@ import {
 } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { FiServer } from 'react-icons/fi';
-import { MCPResourceExplorer } from './mcp_guide';
+import { MCPResourceExplorer } from './mcp_explorer';
+import { KnowledgeBase } from './knowledge_base';
+import { FaBookOpen } from 'react-icons/fa';
 
 const MotionBox = motion(Box);
 
@@ -30,8 +32,15 @@ export const LearnTabs: React.FC<LearnTabsProps> = ({ tabs }) => {
     // Use provided tabs or default to just the MCP tab
     const tabsToRender = tabs || [
         {
+            id: 'kb',
+            label: 'Knowledge Base',
+            icon: FaBookOpen,
+            component: <KnowledgeBase />
+        },
+
+        {
             id: 'mcp',
-            label: 'MCP',
+            label: 'MCP Explorer',
             icon: FiServer,
             component: <MCPResourceExplorer />
         }

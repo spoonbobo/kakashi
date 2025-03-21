@@ -11,7 +11,6 @@ import { ListRooms } from '../components/chat/list_rooms';
 import { Tasks } from '../components/task/task_history';
 import TaskLogger from '../components/task/task_logger';
 import ChatRoom from '../components/chat/chat_room';
-import { KnowledgeBase } from '../components/kb/knowledge_base';
 import { NotifyPanel } from '../components/alert/notify_panel';
 import "./globals.css"
 import { LearnTabs } from '../components/learn/learn';
@@ -21,7 +20,7 @@ export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [time, setTime] = useState<string>('');
-  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'conversations' | 'learn' | 'feedback' | 'knowledge_base'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'conversations' | 'learn' | 'feedback'>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -40,7 +39,7 @@ export default function Home() {
         setActiveView('conversations');
         setSessionId(null);
       } else if (view) {
-        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'learn' | 'feedback' | 'knowledge_base');
+        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'learn' | 'feedback');
         setSessionId(null);
       }
     };
@@ -101,10 +100,6 @@ export default function Home() {
     setActiveView('feedback');
   };
 
-  const handleKnowledgeBaseClick = () => {
-    setActiveView('knowledge_base');
-  };
-
   useEffect(() => {
     async function fetchGreeting() {
       try {
@@ -140,7 +135,6 @@ export default function Home() {
         onTasksClick={handleTasksClick}
         onLearnClick={handleLearnClick}
         onFeedbackClick={handleFeedbackClick}
-        onKnowledgeBaseClick={handleKnowledgeBaseClick}
         onApprovalsClick={() => { }}
       />
 
@@ -171,9 +165,8 @@ export default function Home() {
                     task={selectedTask}
                   />}
                 /> :
-                  activeView === 'knowledge_base' ? <KnowledgeBase /> :
-                    activeView === 'learn' ? <LearnTabs /> :
-                      <ListRooms />
+                  activeView === 'learn' ? <LearnTabs /> :
+                    <ListRooms />
           }
           rightComponent={
             <ResizableLayoutH

@@ -1,6 +1,6 @@
 // /app/api/chat/create_room/route.ts
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import db from '@/lib/db.server';
 
 export async function POST() {
     try {

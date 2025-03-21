@@ -307,11 +307,12 @@ export const MCPResourceExplorer: React.FC<ServerListProps> = () => {
                             onFocus={() => setSearchFocused(true)}
                             onBlur={() => setSearchFocused(false)}
                             pl={10}
-                            bg="white"
-                            boxShadow="sm"
+                            bg={searchFocused ? "gray.50" : "white"}
                             borderRadius="md"
-                            borderColor={searchFocused ? "blue.300" : "gray.200"}
-                            _hover={{ borderColor: searchFocused ? "blue.300" : "gray.300" }}
+                            border="none"
+                            boxShadow="none"
+                            _hover={{ bg: "gray.50" }}
+                            _focus={{ bg: "gray.50", outline: "none", boxShadow: "none" }}
                             transition="all 0.2s"
                         />
                         {searchTerm && (

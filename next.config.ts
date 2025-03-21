@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
       fs: false,
       child_process: false
     };
+
+    config.module.rules.push({
+      test: /\.node$/,
+      use: 'raw-loader'
+    });
+
+    config.module.exprContextCritical = false;
+
     return config;
   },
 };

@@ -83,7 +83,7 @@ services:
       dockerfile: docker/Dockerfile.next
     container_name: kakashi-app
     environment:
-      - VERSION=${VERSION}
+      - NEXT_PUBLIC_VERSION=${VERSION}
       - PGUSER=${PGUSER}
       - PGPASSWORD=${PGPASSWORD}
       - PGHOST=${PGHOST}
