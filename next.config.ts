@@ -5,8 +5,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["@chakra-ui/react"],
   },
   i18n: {
-    locales: ["en"],
-    defaultLocale: "en",
+    locales: ["en", "zh", "zh-CN", "zh-HK", "th", "ja", "ko", "vi"],
+    defaultLocale: "zh",
   },
   webpack: (config) => {
     config.resolve.fallback = { 

@@ -59,5 +59,16 @@
   "all": "ทั้งหมด",
   "started_at": "เริ่มเวลา",
   "completed_at": "สำเร็จเวลา",
-  "dashboard": "หน้าแรก"
+  "dashboard": "แดชบอร์ด",
+  "session_timeout": "หมดเวลาเซสชัน",
+  "privacy_security": "ความเป็นส่วนตัวและความปลอดภัย",
+  "profile": "โปรไฟล์",
+  "email": "อีเมล",
+  "display_name": "ชื่อที่แสดง",
+  "bio": "ประวัติโดยย่อ",
+  "select_language": "เลือกภาษา",
+  "save_changes": "บันทึกการเปลี่ยนแปลง",
+  "your_display_name": "ชื่อที่แสดงของคุณ",
+  "your_email": "example@example.com",
+  "tell_us_about_yourself": "บอกเราถึงตัวคุณเอง"
 }

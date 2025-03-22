@@ -33,7 +33,7 @@
     "knex": "^3.1.0",
     "motion": "^12.4.11",
     "next": "15.2.1",
-    "next-themes": "^0.4.5",
+    "next-themes": "^0.4.6",
     "oci-common": "^2.106.0",
     "oci-objectstorage": "^2.106.0",
     "oci-secrets": "^2.106.0",

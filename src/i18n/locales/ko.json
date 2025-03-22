@@ -59,5 +59,16 @@
     "all": "모두",
     "started_at": "시작 시간",
     "completed_at": "완료 시간",
-    "dashboard": "대시보드"
+    "dashboard": "대시보드",
+    "session_timeout": "세션 타임아웃",
+    "privacy_security": "개인정보 보호 및 보안",
+    "profile": "프로필",
+    "email": "이메일",
+    "display_name": "표시 이름",
+    "bio": "자기소개",
+    "select_language": "언어 선택",
+    "save_changes": "변경 사항 저장",
+    "your_display_name": "표시 이름",
+    "your_email": "example@example.com",
+    "tell_us_about_yourself": "자기소개"
   }

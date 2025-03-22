@@ -32,5 +32,8 @@
   "learn": "Learn",
   "danger_zone": "Danger Zone",
   "delete_all_rooms": "Delete All Chat Rooms",
-  "deleting": "Deleting..."
+  "deleting": "Deleting...",
+  "your_display_name": "Your Display Name",
+  "your_email": "Your Email",
+  "tell_us_about_yourself": "Tell Us About Yourself"
 } 

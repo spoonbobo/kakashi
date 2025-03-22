@@ -59,5 +59,16 @@
     "all": "全部",
     "started_at": "开始时间",
     "completed_at": "完成时间",
-    "dashboard": "仪表盘"
+    "dashboard": "仪表盘",
+    "session_timeout": "会话超时",
+    "privacy_security": "隐私和安全",
+    "profile": "个人资料",
+    "email": "电子邮件",
+    "display_name": "显示名称",
+    "bio": "个人简介",
+    "select_language": "选择语言",
+    "save_changes": "保存更改",
+    "your_display_name": "你想怎么称呼自己",
+    "your_email": "example@example.com",
+    "tell_us_about_yourself": "简单介绍自己吧!"
   }

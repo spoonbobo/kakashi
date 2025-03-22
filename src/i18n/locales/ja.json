@@ -59,5 +59,16 @@
     "all": "すべて",
     "started_at": "開始時間",
     "completed_at": "完了時間",
-    "dashboard": "ダッシュボード"
+    "dashboard": "ダッシュボード",
+    "session_timeout": "セッションタイムアウト",
+    "privacy_security": "プライバシーとセキュリティ",
+    "profile": "プロフィール",
+    "email": "メールアドレス",
+    "display_name": "表示名",
+    "bio": "自己紹介",
+    "select_language": "言語を選択",
+    "save_changes": "変更を保存",
+    "your_display_name": "表示名",
+    "your_email": "example@example.com",
+    "tell_us_about_yourself": "自己紹介"
   }

@@ -6,18 +6,18 @@ import {
     FaPlus,
     FaBook,
     FaChartLine,
+    FaCog,
 } from 'react-icons/fa';
 import { AuthPopover } from './auth/auth_popover';
 import { memo } from 'react';
-import { SettingsPopover } from './settings/settings_popover';
+// import { SettingsPopover } from './settings/settings_popover';
 interface NavbarProps {
     onConversationsClick: () => void;
     onNewChatClick: () => void;
     onTasksClick: () => void;
-    onApprovalsClick: () => void;
     onLearnClick: () => void;
-    onFeedbackClick: () => void;
     onDashboardClick: () => void;
+    onSettingsClick: () => void;
 }
 import { useTranslation } from 'react-i18next';
 
@@ -26,7 +26,8 @@ export const Navbar = memo(function Navbar({
     onNewChatClick,
     onTasksClick,
     onLearnClick,
-    onDashboardClick
+    onDashboardClick,
+    onSettingsClick
 }: NavbarProps) {
     const { t } = useTranslation();
     const handleNewChatClick = () => {
@@ -125,8 +126,20 @@ export const Navbar = memo(function Navbar({
                         <Icon as={FaBook} />
                     </IconButton>
                 </Tooltip>
-                <Tooltip content={t('settings')}>
+                {/* <Tooltip content={t('settings')}>
                     <SettingsPopover />
+                </Tooltip> */}
+                <Tooltip content={t('settings')}>
+                    <IconButton
+                        bg="transparent"
+                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
+                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
+                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
+                        aria-label="Settings"
+                        onClick={onSettingsClick}
+                    >
+                        <Icon as={FaCog} />
+                    </IconButton>
                 </Tooltip>
                 <AuthPopover />
             </Flex>

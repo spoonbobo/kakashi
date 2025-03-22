@@ -14,13 +14,13 @@ import ChatRoom from '../components/chat/chat_room';
 import { NotifyPanel } from '../components/alert/notify_panel';
 import "./globals.css"
 import { LearnTabs } from '../components/learn/learn';
-
+import { Settings } from '../components/settings/settings';
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [time, setTime] = useState<string>('');
-  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'conversations' | 'learn' | 'feedback'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'conversations' | 'learn' | 'dashboard' | 'settings'>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -39,7 +39,7 @@ export default function Home() {
         setActiveView('conversations');
         setSessionId(null);
       } else if (view) {
-        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'learn' | 'feedback');
+        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'learn' | 'dashboard' | 'settings');
         setSessionId(null);
       }
     };
@@ -96,8 +96,12 @@ export default function Home() {
     setActiveView('learn');
   };
 
-  const handleFeedbackClick = () => {
-    setActiveView('feedback');
+  const handleDashboardClick = () => {
+    setActiveView('dashboard');
+  };
+
+  const handleSettingsClick = () => {
+    setActiveView('settings');
   };
 
   useEffect(() => {
@@ -134,8 +138,8 @@ export default function Home() {
         onNewChatClick={handleNewChatClick}
         onTasksClick={handleTasksClick}
         onLearnClick={handleLearnClick}
-        onFeedbackClick={handleFeedbackClick}
-        onApprovalsClick={() => { }}
+        onDashboardClick={handleDashboardClick}
+        onSettingsClick={handleSettingsClick}
       />
 
       <Box
@@ -166,7 +170,8 @@ export default function Home() {
                   />}
                 /> :
                   activeView === 'learn' ? <LearnTabs /> :
-                    <ListRooms />
+                    activeView === 'settings' ? <Settings /> :
+                      <ListRooms />
           }
           rightComponent={
             <ResizableLayoutH

@@ -59,5 +59,16 @@
   "all": "全部",
   "started_at": "開始時間",
   "completed_at": "完成時間",
-  "dashboard": "儀表板"
+  "dashboard": "儀表板",
+  "session_timeout": "會話超時",
+  "privacy_security": "隱私和安全",
+  "profile": "個人資料",
+  "email": "電子郵件",
+  "display_name": "顯示名稱",
+  "bio": "個人簡介",
+  "select_language": "選擇語言",
+  "save_changes": "保存更改",
+  "your_display_name": "你想怎麼稱呼自己",
+  "your_email": "example@example.com",
+  "tell_us_about_yourself": "簡單介紹自己吧!"
 } 

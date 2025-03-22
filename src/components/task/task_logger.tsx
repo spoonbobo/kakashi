@@ -6,13 +6,13 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/auth/context';
 import { FaCheck, FaTimes, FaSync } from 'react-icons/fa';
 import { Tooltip } from "@/components/tooltip";
-import { ToastContainer, toast, Slide } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Task } from '@/types/task';
 import TaskStatusBadge from './task_status_badge';
 import TaskTimestamps from './task_timestamps';
 import TaskIdDisplay from './task_id_display';
 import { useTranslation } from 'react-i18next';
+import Toast, { showSuccessToast, showErrorToast } from '@/components/toast/toast';
 
 interface TaskLoggerProps {
   title?: string;
@@ -339,10 +339,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = memo(function TaskLogger({
       return updatedTask;
     } catch (error) {
       console.error("Error fetching task status:", error);
-      toast.error(`Error refreshing task data: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-        className: 'professional-toast',
-        progressClassName: 'professional-progress',
-      });
+      showErrorToast(`Error refreshing task data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsRefreshing(false);
     }
@@ -485,18 +482,10 @@ const TaskLogger: React.FC<TaskLoggerProps> = memo(function TaskLogger({
 
       // Show toast notification
       if (action === 'approve') {
-        toast.success(`Task "${taskObj.id}" has been approved!`, {
-          className: 'professional-toast',
-          progressClassName: 'professional-progress',
-          icon: <FaCheck color="#4CAF50" size={24} />,
-        });
+        showSuccessToast(`Task "${taskObj.id}" has been approved!`);
         onApprove?.(taskObj.id, editedToolCalls);
       } else {
-        toast.error(`Task "${taskObj.id}" has been denied!`, {
-          className: 'professional-toast',
-          progressClassName: 'professional-progress',
-          icon: <FaTimes color="#F44336" size={24} />,
-        });
+        showErrorToast(`Task "${taskObj.id}" has been denied!`);
         onDeny?.(taskObj.id, editedToolCalls);
       }
 
@@ -524,10 +513,7 @@ const TaskLogger: React.FC<TaskLoggerProps> = memo(function TaskLogger({
 
     } catch (error) {
       console.error(`Error ${action}ing task:`, error);
-      toast.error(`Error ${action}ing task: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-        className: 'professional-toast',
-        progressClassName: 'professional-progress',
-      });
+      showErrorToast(`Error ${action}ing task: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsProcessingAction(false);
     }
@@ -602,58 +588,10 @@ const TaskLogger: React.FC<TaskLoggerProps> = memo(function TaskLogger({
       overflow="hidden"
       className={actionAnimation !== 'none' ? `task-action-${actionAnimation}` : ''}
     >
-      <ToastContainer
-        position="bottom-right"
-        autoClose={4000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        transition={Slide}
-        theme="light"
-        limit={3}
-        style={{
-          zIndex: 9999,
-          minWidth: '300px'
-        }}
-      />
+      <Toast />
 
       {/* eslint-disable-next-line react/no-unknown-property */}
       <style jsx global>{`
-        .professional-toast {
-          border-radius: 8px !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-          padding: 16px !important;
-          font-family: system-ui, -apple-system, sans-serif !important;
-        }
-        
-        .professional-toast-body {
-          font-size: 14px !important;
-          font-weight: 500 !important;
-          margin-left: 12px !important;
-        }
-        
-        .professional-progress {
-          height: 4px !important;
-          background: linear-gradient(to right, #4CAF50, #8BC34A) !important;
-        }
-        
-        .Toastify__toast--error .professional-progress {
-          background: linear-gradient(to right, #F44336, #FF9800) !important;
-        }
-        
-        .Toastify__toast {
-          min-height: 64px !important;
-        }
-        
-        .Toastify__close-button {
-          opacity: 0.7 !important;
-          padding: 4px !important;
-        }
-        
         .task-action-approve {
           animation: pulseGreen 1.5s ease-in-out;
         }

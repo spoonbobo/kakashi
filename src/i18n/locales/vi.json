@@ -59,5 +59,16 @@
   "all": "Tất cả",
   "started_at": "Thời gian bắt đầu",
   "completed_at": "Thời gian hoàn thành",
-  "dashboard": "Bảng điều khiển"
+  "dashboard": "Bảng điều khiển",
+  "session_timeout": "Hết hạn phiên làm việc",
+  "privacy_security": "Quyền riêng tư và bảo mật",
+  "profile": "Hồ sơ",
+  "email": "Email",
+  "display_name": "Tên hiển thị",
+  "bio": "Giới thiệu",
+  "select_language": "Chọn ngôn ngữ",
+  "save_changes": "Lưu thay đổi",
+  "your_display_name": "Bạn muốn gọi mình là gì?",
+  "your_email": "example@example.com",
+  "tell_us_about_yourself": "Hãy giới thiệu bản thân nhé!"
 }
