@@ -18,6 +18,7 @@ docker compose up
 Only Ollama is supported now for LLM service. Roadmap is to support more LLM services.
 
 Visit `kakashi-dev.com` to open the web application.
+Login with default account: ID `admin` and password `admin1234`.
 
 ## Example Usage
 1. Chat with other users or AI agents in the chat
