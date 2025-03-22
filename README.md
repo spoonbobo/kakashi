@@ -14,6 +14,11 @@ Kakashi is under rapid development, welcome to contribute.
 ```bash
 cp public/.env.template public/.env
 docker compose up
+
+# in other terminal
+docker exec -it kakashi-llm bash
+ollama pull gemma3:4b
+ollama pull llama3.2:latest
 ```
 
 Only Ollama is supported now for LLM service. Roadmap is to support more LLM services.

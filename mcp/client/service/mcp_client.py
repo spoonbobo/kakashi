@@ -115,15 +115,13 @@ class MCPClientManager:
         
         summarize_query = {
             "role": "user",
-            "content": f"""
-            Give a brief goal statement of how you (agent) will use the tools {tools_called} to achieve the goal of the query {query}.
-            (description: {descriptions})
-            server_information = {{
-                "server_description": "{server_description}",
-                "server_tools": "{[tool.name for tool in tools]}"
-            }}
-            """
+            "content": f"""Briefly describe how you will use {[tool["tool_name"] for tool in tools_called]} to address the user's request: "{query[0]['content']}".
+            
+Available tools: {[tool.name for tool in tools]}
+Server purpose: {server_description}"""
         }
+        
+        logger.info(f"Summarize query: {summarize_query}")
         
         summarization = self.ollama_client.chat(
             model=self.ollama_model,
