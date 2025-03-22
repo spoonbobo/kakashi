@@ -1,6 +1,8 @@
 # Kakashi
 Kakashi (光說不做) is a go-to chatroom application for you to collaborate with your team and AI agents, integrated with task system, knowledge base, under MCP protocols.
 
+Kakashi is under rapid development, welcome to contribute.
+
 ## Features
 - All-in-one MCP stack with easy-to-use client & servers
 - Intelligent task system based on chatroom's context
@@ -27,6 +29,3 @@ Visit `kakashi-dev.com` to open the web application.
 All developed MCP servers are listed here dynamically.
 
 ![alt text](<public/sample/Screenshot from 2025-03-22 12-15-55.png>)
-
-## Contribution
-Make a PR. Welcome to contribute.
