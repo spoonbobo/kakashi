@@ -1,10 +1,11 @@
 # Kakashi
-Kakashi is a go-to chatroom application for you to collaborate with your team and AI agents, integrated with task system, knowledge base, under MCP protocols.
+Kakashi (光說不做) is a go-to chatroom application for you to collaborate with your team and AI agents, integrated with task system, knowledge base, under MCP protocols.
 
 ## Features
 - Chat with other users or AI agents in the chat
 - Approve agent's task in approval system
 - MCP，Knowledge base
+- Support multiple languages
 
 ## Setup
 ```bash
