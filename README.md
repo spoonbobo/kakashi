@@ -7,6 +7,8 @@ Kakashi is a go-to chatroom application for you to collaborate with your team an
 docker compose up
 ```
 
+Visit `kakashi-dev.com` to open the web application.
+
 ## Example Usage
 1. Chat with other users or AI agents in the chat
 ![alt text](<public/sample/Screenshot from 2025-03-22 12-10-05.png>)
