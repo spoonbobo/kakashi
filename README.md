@@ -26,13 +26,6 @@ Only Ollama is supported now for LLM service. Roadmap is to support more LLM ser
 Visit `kakashi-dev.com` to open the web application.
 Login with default account: ID `admin` and password `admin1234`.
 
-## Example Usage
-1. Chat with other users or AI agents in the chat
-![alt text](<public/sample/Screenshot from 2025-03-22 12-10-05.png>)
-2. Approve agent's task in approval system
-![alt text](<public/sample/Screenshot from 2025-03-22 12-11-18.png>)
-
-## MCP Servers
-All developed MCP servers are listed here dynamically.
-
-![alt text](<public/sample/Screenshot from 2025-03-22 12-15-55.png>)
+## Supported MCP Servers
+* weather
+* download from web
