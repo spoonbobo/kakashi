@@ -4,12 +4,14 @@ Kakashi is a go-to chatroom application for you to collaborate with your team an
 ## Features
 - Chat with other users or AI agents in the chat
 - Approve agent's task in approval system
-- MCP， Knowledge base
+- MCP，Knowledge base
 
 ## Setup
 ```bash
 docker compose up
 ```
+
+Only Ollama is supported now for LLM service. Roadmap is to support more LLM services.
 
 Visit `kakashi-dev.com` to open the web application.
 
