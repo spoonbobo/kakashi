@@ -121,6 +121,7 @@ services:
       - ./mcp/servers:/servers
       - ./mcp/agent_home:/agent_home
     environment:
+      - MCP_SERVERS_JSON=/app/mcp_server.json
       - SOCKET_URL=${NEXT_PUBLIC_WS_URL}
       - CLIENT_URL=${CLIENT_URL}
       - AGENTUSER=${AGENTUSER}
