@@ -70,5 +70,8 @@
   "save_changes": "保存更改",
   "your_display_name": "你想怎麼稱呼自己",
   "your_email": "example@example.com",
-  "tell_us_about_yourself": "簡單介紹自己吧!"
-} 
+  "tell_us_about_yourself": "簡單介紹自己吧!",
+  "select_or_create_room": "選擇或創建房間",
+  "no_room_selected": "沒有選擇房間",
+  "search_rooms": "搜索房間"
+}

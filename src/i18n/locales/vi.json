@@ -70,5 +70,8 @@
   "save_changes": "Lưu thay đổi",
   "your_display_name": "Bạn muốn gọi mình là gì?",
   "your_email": "example@example.com",
-  "tell_us_about_yourself": "Hãy giới thiệu bản thân nhé!"
+  "tell_us_about_yourself": "Hãy giới thiệu bản thân nhé!",
+  "select_or_create_room": "Chọn hoặc tạo phòng",
+  "no_room_selected": "Không có phòng nào được chọn",
+  "search_rooms": "Tìm kiếm phòng"
 }

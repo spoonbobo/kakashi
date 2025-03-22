@@ -70,5 +70,8 @@
     "save_changes": "保存更改",
     "your_display_name": "你想怎么称呼自己",
     "your_email": "example@example.com",
-    "tell_us_about_yourself": "简单介绍自己吧!"
+    "tell_us_about_yourself": "简单介绍自己吧!",
+    "select_or_create_room": "选择或创建房间",
+    "no_room_selected": "没有选择房间",
+    "search_rooms": "搜索房间"
   }

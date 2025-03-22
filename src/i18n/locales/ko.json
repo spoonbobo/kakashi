@@ -70,5 +70,8 @@
     "save_changes": "변경 사항 저장",
     "your_display_name": "표시 이름",
     "your_email": "example@example.com",
-    "tell_us_about_yourself": "자기소개"
+    "tell_us_about_yourself": "자기소개",
+    "select_or_create_room": "방 선택 또는 생성",
+    "no_room_selected": "방이 선택되지 않았습니다",
+    "search_rooms": "방 검색"
   }

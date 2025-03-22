@@ -17,57 +17,29 @@ export function LanguageSwitcher() {
         window.dispatchEvent(new CustomEvent('languageChanged', { detail: locale }));
     };
 
+    // Define languages with their codes and display names
+    const languages = [
+        { code: 'en', name: 'English' },
+        { code: 'zh', name: '中文(繁體)' },
+        { code: 'zhCN', name: '中文(简体)' },
+        { code: 'th', name: 'ไทย' },
+        { code: 'ja', name: '日本語' },
+        { code: 'ko', name: '한국어' },
+        { code: 'vi', name: 'Tiếng Việt' },
+    ];
+
     return (
         <HStack>
-            <Button
-                size="sm"
-                colorScheme={i18n.language === 'en' ? 'blue' : 'gray'}
-                onClick={() => switchLanguage('en')}
-            >
-                English
-            </Button>
-            <Button
-                size="sm"
-                colorScheme={i18n.language === 'zh' ? 'blue' : 'gray'}
-                onClick={() => switchLanguage('zh')}
-            >
-                中文(繁體)
-            </Button>
-            <Button
-                size="sm"
-                colorScheme={i18n.language === 'zhCN' ? 'blue' : 'gray'}
-                onClick={() => switchLanguage('zhCN')}
-            >
-                中文(简体)
-            </Button>
-            <Button
-                size="sm"
-                colorScheme={i18n.language === 'th' ? 'blue' : 'gray'}
-                onClick={() => switchLanguage('th')}
-            >
-                ไทย
-            </Button>
-            <Button
-                size="sm"
-                colorScheme={i18n.language === 'ja' ? 'blue' : 'gray'}
-                onClick={() => switchLanguage('ja')}
-            >
-                日本語
-            </Button>
-            <Button
-                size="sm"
-                colorScheme={i18n.language === 'ko' ? 'blue' : 'gray'}
-                onClick={() => switchLanguage('ko')}
-            >
-                한국어
-            </Button>
-            <Button
-                size="sm"
-                colorScheme={i18n.language === 'vi' ? 'blue' : 'gray'}
-                onClick={() => switchLanguage('vi')}
-            >
-                Tiếng Việt
-            </Button>
+            {languages.map((lang) => (
+                <Button
+                    key={lang.code}
+                    size="sm"
+                    colorScheme={i18n.language === lang.code ? 'blue' : 'gray'}
+                    onClick={() => switchLanguage(lang.code)}
+                >
+                    {lang.name}
+                </Button>
+            ))}
         </HStack>
     );
 }

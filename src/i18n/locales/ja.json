@@ -70,5 +70,8 @@
     "save_changes": "変更を保存",
     "your_display_name": "表示名",
     "your_email": "example@example.com",
-    "tell_us_about_yourself": "自己紹介"
+    "tell_us_about_yourself": "自己紹介",
+    "select_or_create_room": "ルームを選択または作成",
+    "no_room_selected": "ルームが選択されていません",
+    "search_rooms": "ルームを検索"
   }

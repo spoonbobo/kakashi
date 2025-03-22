@@ -35,5 +35,8 @@
   "deleting": "Deleting...",
   "your_display_name": "Your Display Name",
   "your_email": "Your Email",
-  "tell_us_about_yourself": "Tell Us About Yourself"
+  "tell_us_about_yourself": "Tell Us About Yourself",
+  "select_or_create_room": "Select or Create a Room",
+  "no_room_selected": "No room selected",
+  "search_rooms": "Search Rooms"
 } 

@@ -70,5 +70,8 @@
   "save_changes": "บันทึกการเปลี่ยนแปลง",
   "your_display_name": "ชื่อที่แสดงของคุณ",
   "your_email": "example@example.com",
-  "tell_us_about_yourself": "บอกเราถึงตัวคุณเอง"
+  "tell_us_about_yourself": "บอกเราถึงตัวคุณเอง",
+  "select_or_create_room": "เลือกห้องหรือสร้างห้อง",
+  "no_room_selected": "ไม่ได้เลือกห้อง",
+  "search_rooms": "ค้นหาห้อง"
 }

@@ -115,7 +115,8 @@ class MCPClientManager:
         
         summarize_query = {
             "role": "user",
-            "content": f"""Briefly describe how you will use {[tool["tool_name"] for tool in tools_called]} to address the user's request: "{query[0]['content']}".
+            "content": f"""
+Briefly describe how you will use {[tool["tool_name"] for tool in tools_called]} to address the user's request: "{query[0]['content']}".
             
 Available tools: {[tool.name for tool in tools]}
 Server purpose: {server_description}"""

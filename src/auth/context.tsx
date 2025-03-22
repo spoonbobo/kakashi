@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authChecked, setAuthChecked] = useState(false);
 
   // Token expiration constant (24 hours in milliseconds)
-  const TOKEN_EXPIRY = 24 * 60 * 60 * 1000;
+  const TOKEN_EXPIRY = 0.5 * 60 * 60 * 1000;
 
   // Check if the stored token is valid on initial load
   useEffect(() => {
