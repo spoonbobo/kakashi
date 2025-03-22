@@ -4,23 +4,22 @@ import { useState, useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import { Navbar } from '../components/navbar';
 import WelcomeBox from '../components/greeting/welcome_box';
-import AgentTaskPanel from '../components/task/task_panel';
 import { ResizableLayoutV } from '@/components/stretch/resizeable_layoutV';
 import { ResizableLayoutH } from '@/components/stretch/resizeable_layoutH';
-import { ListRooms } from '../components/chat/list_rooms';
+import { ListRooms } from '../components/chat/rooms';
 import { Tasks } from '../components/task/task_history';
 import TaskLogger from '../components/task/task_logger';
 import ChatRoom from '../components/chat/chat_room';
-import { NotifyPanel } from '../components/alert/notify_panel';
 import "./globals.css"
 import { LearnTabs } from '../components/learn/learn';
 import { Settings } from '../components/settings/settings';
+import { LoggerTabs } from '../components/logger/logger';
 
 export default function Home() {
   const [greeting, setGreeting] = useState<string>('Loading...');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [time, setTime] = useState<string>('');
-  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'conversations' | 'learn' | 'dashboard' | 'settings'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'tasks' | 'learn' | 'dashboard' | 'settings'>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -35,11 +34,8 @@ export default function Home() {
       if (view === 'chat' && (roomId || session)) {
         setActiveView('chat');
         setSessionId(roomId || session || null);
-      } else if (view === 'conversations') {
-        setActiveView('conversations');
-        setSessionId(null);
       } else if (view) {
-        setActiveView(view as 'chat' | 'conversations' | 'tasks' | 'learn' | 'dashboard' | 'settings');
+        setActiveView(view as 'chat' | 'tasks' | 'learn' | 'dashboard' | 'settings');
         setSessionId(null);
       }
     };
@@ -64,6 +60,9 @@ export default function Home() {
     const handleRoomChange = (event: CustomEvent) => {
       setActiveView('chat');
       setSessionId(event.detail);
+
+      // Update URL to reflect the room change
+      window.history.pushState({}, '', `/?view=chat&roomId=${event.detail}`);
     };
 
     window.addEventListener('sessionChange', handleSessionChange as EventListener);
@@ -75,17 +74,16 @@ export default function Home() {
     };
   }, []);
 
-  const handleConversationsClick = () => {
-    window.history.pushState({}, '', '/?view=conversations');
-    setActiveView('conversations');
-    setSessionId(null);
-  };
-
-  const handleNewChatClick = () => {
+  const handleChatClick = () => {
     setActiveView('chat');
+    // Force a remount of the ChatRoom component by setting sessionId to a new value
     setSessionId(null);
     window.history.pushState({}, '', '/?view=chat');
-    window.dispatchEvent(new CustomEvent('newChat'));
+
+    // Add a small delay before dispatching the event to ensure state is updated
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('newChat'));
+    }, 50);
   };
 
   const handleTasksClick = () => {
@@ -134,8 +132,7 @@ export default function Home() {
       minH="100vh"
     >
       <Navbar
-        onConversationsClick={handleConversationsClick}
-        onNewChatClick={handleNewChatClick}
+        onChatClick={handleChatClick}
         onTasksClick={handleTasksClick}
         onLearnClick={handleLearnClick}
         onDashboardClick={handleDashboardClick}
@@ -159,25 +156,23 @@ export default function Home() {
       >
         <ResizableLayoutV
           leftComponent={
-            activeView === 'chat' ? <ChatRoom roomId={sessionId || ''} /> :
-              activeView === 'conversations' ? <ListRooms /> :
-                activeView === 'tasks' ? <ResizableLayoutH
-                  topComponent={<Tasks onTaskSelect={task => setSelectedTask(task)} />}
-                  bottomComponent={<TaskLogger
-                    key={selectedTask?.id || 'no-task'}
-                    title="Task Detail"
-                    task={selectedTask}
-                  />}
-                /> :
-                  activeView === 'learn' ? <LearnTabs /> :
-                    activeView === 'settings' ? <Settings /> :
-                      <ListRooms />
+            activeView === 'chat' ? <ChatRoom
+              key={`chat-${sessionId || 'default'}-${activeView}`}
+              roomId={sessionId || ''}
+            /> :
+              activeView === 'tasks' ? <ResizableLayoutH
+                topComponent={<Tasks onTaskSelect={task => setSelectedTask(task)} />}
+                bottomComponent={<TaskLogger
+                  key={selectedTask?.id || 'no-task'}
+                  title="Task Detail"
+                  task={selectedTask}
+                />}
+              /> :
+                activeView === 'learn' ? <LearnTabs /> :
+                  activeView === 'settings' ? <Settings /> :
+                    <ListRooms />
           }
-          rightComponent={
-            <ResizableLayoutH
-              bottomComponent={<AgentTaskPanel title="Recent Tasks" onTaskSelect={setSelectedTask} />}
-              topComponent={<NotifyPanel />}
-            />}
+          rightComponent={<LoggerTabs />}
           initialLeftWidth="75%"
         />
       </Box>

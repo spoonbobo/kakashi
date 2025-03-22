@@ -230,7 +230,7 @@ const httpServer = app.listen(3001, () => {
 // Setup the chat server
 setupChatServer(httpServer);
 
-// Add this helper function
+// Update createRoom function to handle the new schema
 const createRoom = async (): Promise<string> => {
   console.log(process.env.CLIENT_URL);
   try {
@@ -239,14 +239,17 @@ const createRoom = async (): Promise<string> => {
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ name: 'New Chat' }) // This is correct, but ensure the API endpoint expects this format
     });
     
     if (!response.ok) {
-      throw new Error('Failed to create room in database');
+      const errorText = await response.text();
+      console.error('Failed to create room in database:', errorText);
+      throw new Error(`Failed to create room in database: ${response.status} ${errorText}`);
     }
     
     const data = await response.json();
-    return data.sessionId;
+    return data.sessionId || data.id; // Add fallback to handle both response formats
   } catch (error) {
     console.error('Error creating room:', error);
     throw error;

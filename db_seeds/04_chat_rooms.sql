@@ -1,6 +1,7 @@
 -- Create the chat_rooms table
 CREATE TABLE IF NOT EXISTS chat_rooms (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT DEFAULT 'New Chat',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -19,6 +19,7 @@ export async function GET(request: Request) {
         const result = await db.raw(`
             SELECT 
                 cs.id, 
+                cs.name,
                 cs.created_at,
                 COALESCE(
                     (SELECT json_agg(
@@ -40,8 +41,9 @@ export async function GET(request: Request) {
         `, [limit, offset]);
         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const rooms = result.rows.map((row: { id: string; created_at: string; messages: any[]; message_count: number }) => ({
+        const rooms = result.rows.map((row: { id: string; name: string; created_at: string; messages: any[]; message_count: number }) => ({
             id: row.id,
+            name: row.name,
             created_at: row.created_at,
             messages: row.messages.filter((m: { id: string }) => m.id !== null),
             message_count: row.message_count

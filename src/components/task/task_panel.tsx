@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Box, VStack, Text, Flex, IconButton } from '@chakra-ui/react';
-import { Tooltip } from "@/components/tooltip"
+import { Box, VStack, Text } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/auth/context';
 import { TaskBox } from '@/components/task/task_box';
-import { FaSync } from 'react-icons/fa';
 import TaskStatusBadge from './task_status_badge';
 import { useTranslation } from 'react-i18next';
 
@@ -12,20 +10,23 @@ interface AgentTaskPanelProps {
   title?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onTaskSelect: (task: any) => void;
+  hideTitle?: boolean;
+  hideRefresh?: boolean;
+  transparent?: boolean;
 }
 
 const MotionBox = motion.create(Box);
 
 const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
-  onTaskSelect
+  onTaskSelect,
+  transparent = false
 }) => {
-  const { t } = useTranslation();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // @eslint-disable-next-line @typescript-eslint/no-any
   const [tasks, setTasks] = useState<any[]>([]);
   // Track newly added tasks for animation
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set());
   const { isAuthenticated, user, authChecked } = useAuth();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // @eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tasksRef = useRef<any[]>([]);  // Reference to track tasks between renders
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -143,10 +144,6 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
     }
   };
 
-  const handleRefresh = () => {
-    fetchRecentTasks(true);
-  };
-
   // Add a debounce function to prevent too many refreshes
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   const debounce = (func: Function, wait: number) => {
@@ -229,8 +226,8 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
     <MotionBox
       width="100%"
       height="100%"
-      bg="white"
-      boxShadow="md"
+      bg={transparent ? "transparent" : "white"}
+      boxShadow="none"
       borderRadius="md"
       overflowY="auto"
       p={4}
@@ -242,26 +239,9 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
         x: { type: "spring", stiffness: 300, damping: 30 }
       }}
     >
-      <Flex justifyContent="space-between" alignItems="center" mb={4}>
-        <Text fontSize="xl" fontWeight="bold" textAlign="left">
-          {t('recent_tasks')} {tasks.length > 0 && <Text as="span" fontSize="md" color="gray.500">({tasks.length})</Text>}
-        </Text>
-        <Tooltip content="Refresh tasks">
-          <IconButton
-            aria-label="Refresh tasks"
-            size="sm"
-            loading={isRefreshing}
-            onClick={handleRefresh}
-            variant="ghost"
-          >
-            <FaSync />
-          </IconButton>
-        </Tooltip>
-      </Flex>
-
       <VStack
         align="stretch"
-        height="calc(100% - 70px)"
+        height="100%"
         position="relative"
         overflowY="auto"
         css={{

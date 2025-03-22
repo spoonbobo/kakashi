@@ -1,9 +1,8 @@
 import { Box, HStack, Text, Icon, Flex, IconButton } from '@chakra-ui/react';
 import { Tooltip } from "@/components/tooltip"
 import {
-    FaComment,
     FaTasks,
-    FaPlus,
+    FaComment,
     FaBook,
     FaChartLine,
     FaCog,
@@ -12,8 +11,7 @@ import { AuthPopover } from './auth/auth_popover';
 import { memo } from 'react';
 // import { SettingsPopover } from './settings/settings_popover';
 interface NavbarProps {
-    onConversationsClick: () => void;
-    onNewChatClick: () => void;
+    onChatClick: () => void;
     onTasksClick: () => void;
     onLearnClick: () => void;
     onDashboardClick: () => void;
@@ -22,17 +20,16 @@ interface NavbarProps {
 import { useTranslation } from 'react-i18next';
 
 export const Navbar = memo(function Navbar({
-    onConversationsClick,
-    onNewChatClick,
+    onChatClick,
     onTasksClick,
     onLearnClick,
     onDashboardClick,
     onSettingsClick
 }: NavbarProps) {
     const { t } = useTranslation();
-    const handleNewChatClick = () => {
-        window.dispatchEvent(new Event('newChat'));
-        onNewChatClick();
+    const handleChatClick = () => {
+        onChatClick();
+        window.history.pushState({}, '', '/?view=chat');
     };
 
     console.log('User (from Navbar):', "hi");
@@ -61,31 +58,19 @@ export const Navbar = memo(function Navbar({
             </Flex>
 
             <HStack>
-                <Tooltip content={t('new_chat')}>
+                <Tooltip content={t('chat')}>
                     <IconButton
                         bg="transparent"
                         _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
                         _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
                         _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                        aria-label="New Chat"
-                        onClick={handleNewChatClick}
-                    >
-                        <Icon as={FaPlus} />
-                    </IconButton>
-                </Tooltip>
-
-                <Tooltip content={t('rooms')}>
-                    <IconButton
-                        bg="transparent"
-                        _hover={{ bg: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
-                        _active={{ bg: 'rgba(255, 255, 255, 0.3)' }}
-                        _focus={{ boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.3)' }}
-                        aria-label="Rooms"
-                        onClick={onConversationsClick}
+                        aria-label="Chat"
+                        onClick={handleChatClick}
                     >
                         <Icon as={FaComment} />
                     </IconButton>
                 </Tooltip>
+
                 <Tooltip content={t('tasks')}>
                     <IconButton
                         bg="transparent"

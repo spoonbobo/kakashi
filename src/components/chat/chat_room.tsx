@@ -46,9 +46,10 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [roomName, setRoomName] = useState<string>("Chat Room");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [retryCount, setRetryCount] = useState(0);
 
+  // Use the roomId from props only, not from localStorage
   const roomIdRef = useRef<string | undefined>(roomId);
   const socketRef = useRef<Socket | null>(null);
 
@@ -63,15 +64,112 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     { id: 'agent', username: 'agent' },
   ]);
 
-  // Load cached messages on mount
+  // Add this function to fetch room details
+  const fetchRoomDetails = useCallback(async (roomIdToFetch: string) => {
+    try {
+      console.log("Fetching room details for:", roomIdToFetch);
+      const response = await fetch(`/api/chat/get_room?id=${roomIdToFetch}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Room data received:", data);
+        // Check if data.name exists and is not empty before using it
+        if (data.name && data.name.trim() !== '') {
+          setRoomName(data.name);
+          console.log("Room name set to:", data.name);
+        } else {
+          setRoomName(`${t('chat_room')} #${roomIdToFetch.substring(0, 8)}`);
+          console.log("No valid name in data, using fallback:", `${t('chat_room')} #${roomIdToFetch.substring(0, 8)}`);
+        }
+      } else {
+        console.log("Error response from room API:", response.status);
+        setRoomName(`${t('chat_room')} #${roomIdToFetch.substring(0, 8)}`);
+      }
+    } catch (error) {
+      console.error("Error fetching room details:", error);
+      setRoomName(`${t('chat_room')} #${roomIdToFetch.substring(0, 8)}`);
+    }
+  }, [t]);
+
+  // Add a useEffect that runs on component mount to fetch room details
   useEffect(() => {
+    // Only run this on initial mount if we have a roomId
     if (roomIdRef.current) {
-      const cachedMessages = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdRef.current}`);
-      if (cachedMessages) {
-        setMessages(JSON.parse(cachedMessages));
+      console.log("Initial mount - fetching room details for:", roomIdRef.current);
+      fetchRoomDetails(roomIdRef.current);
+    }
+  }, [fetchRoomDetails]);
+
+  // Add this effect to check URL for roomId when component mounts or becomes visible
+  useEffect(() => {
+    // Check URL for roomId parameter
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      const roomIdFromUrl = url.searchParams.get('roomId');
+
+      if (roomIdFromUrl && roomIdFromUrl !== roomIdRef.current) {
+        console.log("Found roomId in URL:", roomIdFromUrl);
+        roomIdRef.current = roomIdFromUrl;
+
+        // Fetch room details
+        fetchRoomDetails(roomIdFromUrl);
+
+        // Reconnect socket with new roomId
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+          setRetryCount(prev => prev + 1); // Trigger socket reconnection
+        }
+
+        // Load cached messages for this room
+        const cachedMessages = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdFromUrl}`);
+        if (cachedMessages) {
+          setMessages(JSON.parse(cachedMessages));
+        } else {
+          setMessages([]); // Clear messages when switching to a new room
+        }
       }
     }
-  }, []);
+  }, [fetchRoomDetails]);
+
+  // Add this effect to listen for visibility changes (tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // When tab becomes visible again, check URL for roomId
+        const url = new URL(window.location.href);
+        const roomIdFromUrl = url.searchParams.get('roomId');
+
+        if (roomIdFromUrl && roomIdFromUrl !== roomIdRef.current) {
+          console.log("Tab visible again, updating roomId from URL:", roomIdFromUrl);
+          roomIdRef.current = roomIdFromUrl;
+
+          // Fetch room details
+          fetchRoomDetails(roomIdFromUrl);
+
+          // Reconnect socket with new roomId
+          if (socketRef.current) {
+            socketRef.current.disconnect();
+            socketRef.current = null;
+            setRetryCount(prev => prev + 1); // Trigger socket reconnection
+          }
+
+          // Load cached messages for this room
+          const cachedMessages = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdFromUrl}`);
+          if (cachedMessages) {
+            setMessages(JSON.parse(cachedMessages));
+          } else {
+            setMessages([]); // Clear messages when switching to a new room
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchRoomDetails]);
 
   // Save messages to localStorage whenever they change (optimized)
   useEffect(() => {
@@ -93,10 +191,29 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
       socketRef.current = null;
     }
 
-    setLoading(true);
-    // console.log("window.location.hostname", window.location.hostname);
+    // If no roomId is provided, just show the interface without connecting
+    if (!roomIdRef.current) {
+      setLoading(false);
+      setRoomName(t('chat'));
+      return;
+    }
 
-    const socket = io(window.location.hostname, {
+    // Fetch room details immediately, don't wait for socket connection
+    console.log("Socket effect - fetching room details for:", roomIdRef.current);
+    fetchRoomDetails(roomIdRef.current);
+
+    setLoading(true);
+    console.log("Attempting to connect to socket server...");
+    console.log("Room ID:", roomIdRef.current);
+
+    // Determine the correct socket server URL
+    const socketUrl = process.env.NODE_ENV === 'production'
+      ? window.location.origin
+      : `${window.location.protocol}//${window.location.hostname}:3001`;
+
+    console.log("Socket URL:", socketUrl);
+
+    const socket = io(socketUrl, {
       path: '/socket.io/chat/',
       auth: {
         token: currentUser.token,
@@ -111,8 +228,15 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
+      console.log("Socket connected successfully!");
       setConnectionError(null);
       setLoading(false);
+
+      // Fetch room details after connection
+      if (roomIdRef.current) {
+        console.log("Fetching room details after connection for:", roomIdRef.current);
+        fetchRoomDetails(roomIdRef.current);
+      }
     });
 
     socket.on('room_created', (data: { roomId: string }) => {
@@ -129,8 +253,14 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     });
 
     socket.on('connect_error', (err) => {
+      console.error("Socket connection error:", err);
       setConnectionError(`Connection error: ${err.message}`);
       setLoading(false);
+    });
+
+    socket.on('error', (err) => {
+      console.error("Socket error:", err);
+      setConnectionError(`Socket error: ${err.message || 'Unknown error'}`);
     });
 
     socket.on('disconnect', () => {
@@ -155,10 +285,11 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     });
 
     return () => {
+      console.log("Disconnecting socket...");
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [isAuthenticated, currentUser, retryCount, createSystemMessage]);
+  }, [isAuthenticated, currentUser, retryCount, createSystemMessage, t, fetchRoomDetails]);
 
   // Memoize message rendering function to prevent unnecessary re-renders
   const renderMessage = useCallback((msg: ChatMessage) => {
@@ -300,9 +431,61 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     }
   }, [message, currentUser?.username, accessMCP]);
 
+  // Modify the handleRoomSelection function
+  useEffect(() => {
+    const handleRoomSelection = (event: CustomEvent) => {
+      if (event.detail && event.detail !== roomIdRef.current) {
+        const newRoomId = event.detail;
+        console.log("Room selection event - changing to room:", newRoomId);
+
+        roomIdRef.current = newRoomId;
+
+        // Explicitly fetch room details here
+        console.log("Room selection event - fetching room details for:", newRoomId);
+        fetchRoomDetails(newRoomId);
+
+        setRetryCount(prev => prev + 1); // Trigger socket reconnection
+
+        // Load cached messages for this room
+        const cachedMessages = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${newRoomId}`);
+        if (cachedMessages) {
+          setMessages(JSON.parse(cachedMessages));
+        } else {
+          setMessages([]); // Clear messages when switching to a new room
+        }
+
+        // Update URL to reflect the new room
+        const url = new URL(window.location.href);
+        url.searchParams.set('roomId', newRoomId);
+        window.history.pushState({}, '', url.toString());
+      }
+    };
+
+    window.addEventListener('roomChange', handleRoomSelection as EventListener);
+
+    return () => {
+      window.removeEventListener('roomChange', handleRoomSelection as EventListener);
+    };
+  }, [fetchRoomDetails]);
+
+  // Add this effect to monitor roomName changes
+  useEffect(() => {
+    console.log("Room name state changed to:", roomName);
+  }, [roomName]);
+
   if (loading) return <Center height="100%"><Spinner size="xl" color="blue.500" /></Center>;
   if (!isAuthenticated) return <Box p={4}>Please log in to join the chat</Box>;
   if (connectionError) return <Center height="100%" p={4}><Text>{connectionError}</Text></Center>;
+
+  // Show a different UI when no room is selected
+  if (!roomIdRef.current) {
+    return (
+      <Flex direction="column" width="100%" height="100%" overflow="hidden" px={20} justifyContent="center" alignItems="center">
+        <Text fontSize="xl" fontWeight="bold" mb={4}>{t('select_or_create_room')}</Text>
+        <Text color="gray.500">{t('no_room_selected')}</Text>
+      </Flex>
+    );
+  }
 
   return (
     <Flex direction="column" width="100%" height="100%" overflow="hidden" px={20}>

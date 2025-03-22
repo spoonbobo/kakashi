@@ -14,8 +14,11 @@ export default function I18nProvider({
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        if (i18n.language !== locale) {
-            i18n.changeLanguage(locale);
+        // Map Next.js locale to i18next locale if needed
+        const i18nLocale = locale === 'zh-CN' ? 'zhCN' : locale;
+
+        if (i18n.language !== i18nLocale) {
+            i18n.changeLanguage(i18nLocale);
         }
         setMounted(true);
 

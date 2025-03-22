@@ -260,26 +260,6 @@ export const NotifyPanel = () => {
         }
     };
 
-    const handleRefresh = async () => {
-        if (!isAuthenticated) return;
-        setIsRefreshing(true);
-
-        try {
-            console.log('Manually refreshing notifications...');
-            const response = await fetch('/api/alert/get_notifications?limit=20');
-            if (response.ok) {
-                const data = await response.json();
-                // Handle both the new format (object with notifications property) and old format (array)
-                const notificationsData = Array.isArray(data) ? data : data.notifications || [];
-                console.log('Received refreshed notifications:', notificationsData.length);
-                setNotifications(notificationsData);
-            }
-        } catch (error) {
-            console.error('Error refreshing notifications:', error);
-        } finally {
-            setIsRefreshing(false);
-        }
-    };
 
     if (!isAuthenticated) {
         return null;
@@ -290,7 +270,7 @@ export const NotifyPanel = () => {
             width="100%"
             height="100%"
             bg="white"
-            boxShadow="md"
+            boxShadow="none"
             borderRadius="md"
             overflowY="auto"
             p={4}
@@ -302,31 +282,9 @@ export const NotifyPanel = () => {
                 x: { type: "spring", stiffness: 300, damping: 30 }
             }}
         >
-            <Flex justifyContent="space-between" alignItems="center" mb={4}>
-                <Text fontSize="xl" fontWeight="bold" textAlign="left">
-                    {t('notifications')}{notifications.length > 0 &&
-                        <Text as="span" fontSize="md" color="gray.500">({notifications.length})</Text>}
-                </Text>
-                <Flex gap={2} alignItems="center">
-                    {!socketConnected && (
-                        <Badge colorScheme="red" variant="subtle">Offline</Badge>
-                    )}
-                    <Tooltip content="Refresh notifications">
-                        <IconButton
-                            aria-label="Refresh notifications"
-                            size="sm"
-                            loading={isRefreshing}
-                            onClick={handleRefresh}
-                            variant="ghost"
-                        />
-                    </Tooltip>
-                </Flex>
-            </Flex>
-
-            {/* Notification List with Animations */}
             <VStack
                 align="stretch"
-                height="calc(100% - 70px)"
+                height="100%"
                 overflowY="auto"
                 css={{
                     '&::-webkit-scrollbar': {

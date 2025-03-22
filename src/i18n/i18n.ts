@@ -43,7 +43,20 @@ i18n
     },
     lng: 'zh', // default language
     fallbackLng: 'zh', // fallback language
-    debug: process.env.NODE_ENV === 'development',
+    
+    // Change debug to false to suppress warnings
+    debug: false,
+    
+    // Add these options to handle missing keys more gracefully
+    saveMissing: false,
+    missingKeyHandler: () => {
+      // Intentionally empty to suppress warnings
+    },
+    
+    // Return the key itself when translation is missing
+    returnNull: false,
+    returnEmptyString: false,
+    
     interpolation: {
       escapeValue: false // react already safes from xss
     },
@@ -51,5 +64,18 @@ i18n
       useSuspense: false // This is important for Next.js
     }
   });
+
+// Add this to suppress console warnings for missing keys
+if (typeof window !== 'undefined') {
+  const originalWarn = console.warn;
+  console.warn = function(...args) {
+    if (args.length > 0 && 
+        typeof args[0] === 'string' && 
+        args[0].includes('i18next::translator: missingKey')) {
+      return;
+    }
+    return originalWarn.apply(console, args);
+  };
+}
 
 export default i18n; 

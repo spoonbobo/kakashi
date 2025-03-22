@@ -1,12 +1,9 @@
 import type { NextConfig } from "next";
+import webpack from 'webpack';
 
 const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["@chakra-ui/react"],
-  },
-  i18n: {
-    locales: ["en", "zh", "zh-CN", "zh-HK", "th", "ja", "ko", "vi"],
-    defaultLocale: "zh",
   },
   webpack: (config) => {
     config.resolve.fallback = { 

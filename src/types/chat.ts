@@ -20,6 +20,7 @@ export interface MentionState {
 
 export interface Room {
   id: string;
+  name: string;
   created_at: string;
   messages: ChatMessage[];
   message_count: number;
