@@ -76,14 +76,21 @@ export default function Home() {
 
   const handleChatClick = () => {
     setActiveView('chat');
-    // Force a remount of the ChatRoom component by setting sessionId to a new value
-    setSessionId(null);
-    window.history.pushState({}, '', '/?view=chat');
 
-    // Add a small delay before dispatching the event to ensure state is updated
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('newChat'));
-    }, 50);
+    // Check if there's already a roomId in the URL
+    const url = new URL(window.location.href);
+    const existingRoomId = url.searchParams.get('roomId');
+
+    if (existingRoomId) {
+      // If there's already a roomId, keep it
+      window.history.pushState({}, '', `/?view=chat&roomId=${existingRoomId}`);
+    } else {
+      // Otherwise, just switch to chat view without clearing sessionId
+      window.history.pushState({}, '', '/?view=chat');
+    }
+
+    // Dispatch event to notify components about the view change
+    window.dispatchEvent(new CustomEvent('viewChange', { detail: 'chat' }));
   };
 
   const handleTasksClick = () => {

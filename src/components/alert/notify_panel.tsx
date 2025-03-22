@@ -1,4 +1,4 @@
-import { Box, Text, VStack, Badge, Flex, IconButton, Spinner } from "@chakra-ui/react";
+import { Box, Text, VStack, Flex, IconButton, Spinner, Icon } from "@chakra-ui/react";
 import { useAuth } from "@/auth/context";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState, useRef } from "react";
@@ -7,6 +7,7 @@ import { Tooltip } from "@/components/tooltip";
 import { v4 as uuidv4 } from 'uuid';
 import { Notification } from "@/types/alert";
 import { useTranslation } from 'react-i18next';
+import { FaSync } from "react-icons/fa";
 
 const MotionBox = motion(Box);
 
@@ -14,10 +15,11 @@ export const NotifyPanel = () => {
     const { t } = useTranslation();
     const { user: currentUser, isAuthenticated } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const [socket, setSocket] = useState<Socket | null>(null);
     const [loading, setLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [socketConnected, setSocketConnected] = useState(false);
     const socketInitialized = useRef(false);
     const [newNotificationIds, setNewNotificationIds] = useState<Set<string>>(new Set());
@@ -44,7 +46,15 @@ export const NotifyPanel = () => {
                     // Handle both the new format (object with notifications property) and old format (array)
                     const notificationsData = Array.isArray(data) ? data : data.notifications || [];
                     console.log('Received initial notifications:', notificationsData.length);
+
+                    // Add more detailed logging to debug empty notifications
+                    if (notificationsData.length === 0) {
+                        console.log('Empty notifications array received. Raw response:', data);
+                    }
+
                     setNotifications(notificationsData);
+                } else {
+                    console.error('Failed to fetch notifications:', response.status, response.statusText);
                 }
             } catch (error) {
                 console.error('Error fetching notifications:', error);
@@ -101,8 +111,20 @@ export const NotifyPanel = () => {
 
             socketInstance.on('notifications_data', (data) => {
                 console.log('Received notifications data from socket:', data);
-                if (data.notifications && Array.isArray(data.notifications)) {
-                    setNotifications(data.notifications);
+                // Improved data handling with better error checking
+                if (data && typeof data === 'object') {
+                    const notificationsArray = Array.isArray(data) ? data :
+                        (data.notifications && Array.isArray(data.notifications)) ?
+                            data.notifications : [];
+
+                    console.log('Processed notifications array length:', notificationsArray.length);
+                    if (notificationsArray.length > 0) {
+                        setNotifications(notificationsArray);
+                    } else {
+                        console.log('Received empty notifications array from socket');
+                    }
+                } else {
+                    console.error('Received invalid notifications data format:', data);
                 }
             });
 
@@ -213,10 +235,27 @@ export const NotifyPanel = () => {
         // Mark socket as initialized
         socketInitialized.current = true;
 
+        // Add a manual refresh function
+        const refreshNotifications = () => {
+            setIsRefreshing(true);
+            fetchNotifications().finally(() => {
+                setIsRefreshing(false);
+            });
+
+            // Also request via socket for redundancy
+            if (socketInstance && socketInstance.connected) {
+                socketInstance.emit('get_notifications');
+            }
+        };
+
+        // Set up periodic refresh
+        const refreshInterval = setInterval(refreshNotifications, 60000); // Refresh every minute
+
         // Clean up function
         return () => {
             console.log('Cleaning up socket connection and intervals');
             clearInterval(reconnectInterval);
+            clearInterval(refreshInterval);
 
             if (socketInstance) {
                 socketInstance.disconnect();
@@ -282,6 +321,38 @@ export const NotifyPanel = () => {
                 x: { type: "spring", stiffness: 300, damping: 30 }
             }}
         >
+            <Flex justifyContent="space-between" alignItems="center" mb={2}>
+                <Text fontWeight="medium">{t('notifications')}</Text>
+                <Tooltip content={t('refresh_notifications')}>
+                    <IconButton
+                        aria-label={t('refresh_notifications')}
+                        size="sm"
+                        variant="ghost"
+                        loading={isRefreshing}
+                        onClick={() => {
+                            setIsRefreshing(true);
+                            // Fetch notifications via API
+                            fetch('/api/alert/get_notifications?limit=20')
+                                .then(response => response.json())
+                                .then(data => {
+                                    const notificationsData = Array.isArray(data) ? data : data.notifications || [];
+                                    console.log('Manually refreshed notifications:', notificationsData.length);
+                                    setNotifications(notificationsData);
+                                })
+                                .catch(error => console.error('Error refreshing notifications:', error))
+                                .finally(() => setIsRefreshing(false));
+
+                            // Also request via socket for redundancy
+                            if (socket && socket.connected) {
+                                socket.emit('get_notifications');
+                            }
+                        }}
+                    >
+                        <Icon as={FaSync} />
+                    </IconButton>
+                </Tooltip>
+            </Flex>
+
             <VStack
                 align="stretch"
                 height="100%"

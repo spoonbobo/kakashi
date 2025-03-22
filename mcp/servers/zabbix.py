@@ -1,3 +1,5 @@
+import requests
+
 AUTH_URL = "https://10.33.80.21/api_jsonrpc.php"
 
 auth_post = {

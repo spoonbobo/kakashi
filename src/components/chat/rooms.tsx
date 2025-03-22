@@ -153,7 +153,7 @@ export const ListRooms = () => {
       const query = searchQuery.toLowerCase();
       const filtered = rooms.filter(room => {
         // Search in room ID
-        if (room.id.toString().includes(query)) return true;
+        if (room.name.toString().includes(query)) return true;
 
         // Search in messages
         const messageArray = Array.isArray(room.messages) ? room.messages : [];
@@ -256,14 +256,12 @@ export const ListRooms = () => {
 
             <Popover.Root>
               <Popover.Trigger asChild>
-                {/* <Button
-                  leftIcon={<FaPlus />}
-                  colorScheme="blue"
-                  size="md"
-                >
-                  {t('new_chat')}
-                </Button> */}
                 <IconButton
+                  bg="blue.500"
+                  color="white"
+                  _hover={{ bg: 'blue.600' }}
+                  _active={{ bg: 'blue.700' }}
+                  _focus={{ boxShadow: '0 0 0 3px rgba(66, 153, 225, 0.6)' }}
                   aria-label="New Chat"
                   colorScheme="blue"
                   size="md"

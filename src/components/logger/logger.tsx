@@ -81,7 +81,7 @@ export const LoggerTabs: React.FC<LoggerTabsProps> = ({
                 position="relative"
             >
                 <Tabs.Root
-                    defaultValue="tasks"
+                    defaultValue="rooms"
                     variant="line"
                     onChange={(value) => setActiveTab(String(value))}
                     style={{
