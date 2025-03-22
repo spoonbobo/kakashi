@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Box, VStack, Text } from '@chakra-ui/react';
+import { Box, VStack, Text, Flex, IconButton, Icon } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/auth/context';
 import { TaskBox } from '@/components/task/task_box';
 import TaskStatusBadge from './task_status_badge';
+import { FaSync } from "react-icons/fa";
+import { Tooltip } from "@/components/tooltip";
 import { useTranslation } from 'react-i18next';
-
 interface AgentTaskPanelProps {
   title?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,12 +22,13 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
   onTaskSelect,
   transparent = false
 }) => {
-  // @eslint-disable-next-line @typescript-eslint/no-any
+  const { t } = useTranslation();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tasks, setTasks] = useState<any[]>([]);
   // Track newly added tasks for animation
   const [newTaskIds, setNewTaskIds] = useState<Set<string>>(new Set());
   const { isAuthenticated, user, authChecked } = useAuth();
-  // @eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tasksRef = useRef<any[]>([]);  // Reference to track tasks between renders
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -239,6 +241,32 @@ const AgentTaskPanel: React.FC<AgentTaskPanelProps> = ({
         x: { type: "spring", stiffness: 300, damping: 30 }
       }}
     >
+      <Flex justifyContent="space-between" alignItems="center" mb={2}>
+        <Text fontWeight="medium">{t('tasks')}</Text>
+        <Tooltip content={t('refresh_tasks')}>
+          <IconButton
+            aria-label={t('refresh_tasks')}
+            size="sm"
+            variant="ghost"
+            loading={isRefreshing}
+            onClick={() => {
+              setIsRefreshing(true);
+              // Fetch tasks via API
+              fetch('/api/task/get_recent_tasks?limit=20')
+                .then(response => response.json())
+                .then(data => {
+                  console.log('Manually refreshed tasks:', data.length);
+                  setTasks(data);
+                })
+                .catch(error => console.error('Error refreshing tasks:', error))
+                .finally(() => setIsRefreshing(false));
+            }}
+          >
+            <Icon as={FaSync} />
+          </IconButton>
+        </Tooltip>
+      </Flex>
+
       <VStack
         align="stretch"
         height="100%"

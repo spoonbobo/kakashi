@@ -1,14 +1,17 @@
+# Kakashi
+Kakashi is a go-to chatroom application for you to collaborate with your team and AI agents, integrated with task system, knowledge base, under MCP protocols.
+
+
+## Setup
 ```bash
-git submodule update --init --recursive
-
-`docker stop $(docker ps -q)`
-`docker rm -f $(docker ps -aq)`
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-docker compose down
-docker volume rm kakashi_postgres_data
-docker compose up -d
-
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
+docker compose up
 ```
+
+## Example Usage
+1. Chat with other users or AI agents in the chat
+![alt text](<public/sample/Screenshot from 2025-03-22 12-10-05.png>)
+2. Approve agent's task in approval system
+![alt text](<public/sample/Screenshot from 2025-03-22 12-11-18.png>)
+
+## Contribution
+Make a PR. Welcome to contribute.
