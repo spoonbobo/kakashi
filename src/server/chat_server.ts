@@ -114,10 +114,11 @@ export const setupChatServer = (httpServer: HttpServer) => {
     if (!userConnections.get(roomId)?.has(user.id)) {
         userConnections.get(roomId)?.set(user.id, new Set());
     }
-    const userSockets = userConnections.get(roomId)?.get(user.id)!;
+    const userSockets = userConnections.get(roomId)?.get(user.id);
 
-    // CRITICAL FIX: Add this socket to the user's connections BEFORE checking if they're new
-    userSockets.add(socket.id);
+    if (userSockets) {
+        userSockets.add(socket.id);
+    }
 
     // Only add user and emit join event if this is their first connection
     const isNewUser = !roomUsers.has(user.id);
@@ -141,6 +142,7 @@ export const setupChatServer = (httpServer: HttpServer) => {
       if (response.ok) {
         const data = await response.json();
         if (data && data.name) {
+          // @ts-expect-error: data.id is not defined
           roomDetails = { name: data.name, id: data.id, created_at: data.created_at };
         }
       }

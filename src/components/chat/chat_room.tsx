@@ -35,8 +35,6 @@ interface RoomData {
 const LOCAL_STORAGE_KEY_PREFIX = 'chat_messages_';
 const MAX_CACHED_MESSAGES = 100;
 const FETCH_DEBOUNCE_TIME = 500;
-const RECONNECTION_ATTEMPTS = 5;
-const SOCKET_TIMEOUT = 15000; // Increased timeout
 
 const messageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -266,6 +264,7 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
 
     // CRITICAL FIX: Don't disconnect existing socket if it's already connected to the same room
     if (socketRef.current) {
+      // @ts-expect-error: socketRef.current.auth is not typed
       const currentSocketRoom = socketRef.current.auth?.roomId;
       if (currentSocketRoom === roomIdRef.current) {
         console.log("Socket already connected to room:", roomIdRef.current);

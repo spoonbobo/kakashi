@@ -13,7 +13,7 @@ Kakashi is under rapid development, welcome to contribute.
 ## Setup
 ```bash
 cp public/.env.template public/.env
-docker compose up
+docker compose up --build
 
 # in other terminal
 docker exec -it kakashi-llm bash
