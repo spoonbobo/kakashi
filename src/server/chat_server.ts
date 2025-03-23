@@ -43,8 +43,8 @@ export const setupChatServer = (httpServer: HttpServer) => {
     io.adapter(createAdapter(pubClient, subClient));
   });
 
-  // Improved user tracking system
-  const rooms = new Map<string, Set<User>>();
+  // Modified user tracking system
+  const rooms = new Map<string, Map<string, User>>();  // Change to Map for O(1) lookups by userId
   const messageHistory = new Map<string, ChatMessage[]>();
   
   // Track user connections by room and userId
@@ -84,44 +84,76 @@ export const setupChatServer = (httpServer: HttpServer) => {
   io.on('connection', async (socket) => {
     let roomId = socket.handshake.auth.roomId;
     const isAgent = socket.handshake.auth.isAgent;
-    
     const user = socket.data.user;
 
+    // Add connection validation
+    if (!user || !user.id) {
+        console.error('Invalid user connection:', user);
+        socket.disconnect(true);
+        return;
+    }
+
     if (!roomId && !isAgent) {
-      roomId = await createRoom();
-      rooms.set(roomId, new Set());
-      messageHistory.set(roomId, []);
-      userConnections.set(roomId, new Map());
-      socket.emit('room_created', { roomId });
+        roomId = await createRoom();
+        rooms.set(roomId, new Map());
+        messageHistory.set(roomId, []);
+        userConnections.set(roomId, new Map());
+        socket.emit('room_created', { roomId });
     }
 
     socket.join(roomId);
 
     // Initialize room data structures if they don't exist
-    if (!rooms.has(roomId)) rooms.set(roomId, new Set());
+    if (!rooms.has(roomId)) rooms.set(roomId, new Map());
     if (!userConnections.has(roomId)) userConnections.set(roomId, new Map());
     if (!messageHistory.has(roomId)) messageHistory.set(roomId, []);
 
     const roomUsers = rooms.get(roomId)!;
-  
-    // Track user connections properly
-    if (!roomUsers.has(user)) {
-      roomUsers.add({ ...user, roomId });
-      socket.to(roomId).emit('user_joined', user);
-    }
 
     // Track socket connections per user
     if (!userConnections.get(roomId)?.has(user.id)) {
-      userConnections.get(roomId)?.set(user.id, new Set());
+        userConnections.get(roomId)?.set(user.id, new Set());
     }
-    userConnections.get(roomId)?.get(user.id)?.add(socket.id);
+    const userSockets = userConnections.get(roomId)?.get(user.id)!;
+
+    // CRITICAL FIX: Add this socket to the user's connections BEFORE checking if they're new
+    userSockets.add(socket.id);
+
+    // Only add user and emit join event if this is their first connection
+    const isNewUser = !roomUsers.has(user.id);
+    if (isNewUser) {
+        roomUsers.set(user.id, { ...user, roomId });
+        // Only emit user_joined if username doesn't start with "agent"
+        if (!user.username.startsWith('agent')) {
+            socket.to(roomId).emit('user_joined', user);
+        }
+    }
 
     // Fetch recent messages from Redis
     const redisKey = `chat:room:${roomId}:messages`;
     const messagesRaw = await pubClient.lRange(redisKey, -MAX_INITIAL_MESSAGES, -1);
     const messages = messagesRaw.map(msg => JSON.parse(msg));
 
-    socket.emit('room_data', { messages, users: Array.from(roomUsers || []) });
+    // Fetch room details from database
+    let roomDetails = { name: `Chat Room #${roomId.substring(0, 8)}` };
+    try {
+      const response = await fetch(`${process.env.CLIENT_URL}/api/chat/get_room?id=${roomId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.name) {
+          roomDetails = { name: data.name, id: data.id, created_at: data.created_at };
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching room details:', error);
+    }
+
+    // Send both messages and room details in one event - convert Map to Array for users
+    socket.emit('room_data', { 
+      messages, 
+      users: Array.from(roomUsers.values()),
+      room: roomDetails
+    });
 
     socket.on('message', async (message: ChatMessage) => {
       const newMessage = { 
@@ -200,21 +232,28 @@ export const setupChatServer = (httpServer: HttpServer) => {
     });
 
     socket.on('disconnect', () => {
-      const userSockets = userConnections.get(roomId)?.get(user.id);
-      userSockets?.delete(socket.id);
-
-      // Remove user only if no active sockets remain
-      if (userSockets && userSockets.size === 0) {
-        userConnections.get(roomId)?.delete(user.id);
-        rooms.get(roomId)?.forEach(u => {
-          if (u.id === user.id) rooms.get(roomId)?.delete(u);
-        });
+        // CRITICAL FIX: Get the latest userSockets reference
+        const userSockets = userConnections.get(roomId)?.get(user.id);
         
-        // Only emit user_left if username doesn't start with "agent"
-        if (!user.username.startsWith('agent')) {
-          socket.to(roomId).emit('user_left', user.id);
+        if (!userSockets) {
+            console.log(`No sockets found for user ${user.id} in room ${roomId}`);
+            return;
         }
-      }
+        
+        userSockets.delete(socket.id);
+        console.log(`User ${user.username} socket ${socket.id} disconnected. Remaining sockets: ${userSockets.size}`);
+
+        // Remove user only if no active sockets remain
+        if (userSockets.size === 0) {
+            console.log(`All sockets for user ${user.username} disconnected, removing from room ${roomId}`);
+            userConnections.get(roomId)?.delete(user.id);
+            roomUsers.delete(user.id);
+            
+            // Only emit user_left if username doesn't start with "agent"
+            if (!user.username.startsWith('agent')) {
+                socket.to(roomId).emit('user_left', user.id);
+            }
+        }
     });
   });
 

@@ -13,4 +13,6 @@ export interface Task {
     result: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tools_called?: Record<string, any>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    conversation?: Record<string, any>;
   }

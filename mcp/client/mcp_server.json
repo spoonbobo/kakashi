@@ -9,6 +9,11 @@
             "description": "/servers/description/web_fetcher.md",
             "path": "/servers/web_fetcher.py",
             "metadata": {}
+        },
+        "zabbix": {
+            "description": "/servers/description/zabbix.md",
+            "path": "/servers/zabbix.py",
+            "metadata": {}
         }
     }
 }

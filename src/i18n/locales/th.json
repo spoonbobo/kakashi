@@ -73,5 +73,7 @@
   "tell_us_about_yourself": "บอกเราถึงตัวคุณเอง",
   "select_or_create_room": "เลือกห้องหรือสร้างห้อง",
   "no_room_selected": "ไม่ได้เลือกห้อง",
-  "search_rooms": "ค้นหาห้อง"
+  "search_rooms": "ค้นหาห้อง",
+  "no_rooms_yet": "ยังไม่มีห้องสนทนา",
+  "available_servers": "เซิร์ฟเวอร์ที่มีอยู่"
 }

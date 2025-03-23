@@ -73,5 +73,6 @@
     "tell_us_about_yourself": "자기소개",
     "select_or_create_room": "방 선택 또는 생성",
     "no_room_selected": "방이 선택되지 않았습니다",
-    "search_rooms": "방 검색"
+    "search_rooms": "방 검색",
+    "available_servers": "사용 가능한 서버"
   }

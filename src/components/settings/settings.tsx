@@ -10,16 +10,11 @@ import {
     Icon,
     Separator,
     Badge,
-    Switch,
-    Select,
     Input,
-    IconButton,
-    Checkbox,
-    createListCollection,
-    Portal,
+
 } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
-import { FaCog, FaGlobe, FaTrash, FaKey, FaUserCircle, FaBell, FaShieldAlt } from 'react-icons/fa';
+import { FaCog, FaGlobe, FaTrash, FaUserCircle } from 'react-icons/fa';
 import { FiInfo } from 'react-icons/fi';
 import Toast, { showSuccessToast, showErrorToast } from '@/components/toast/toast';
 import { motion } from 'framer-motion';
@@ -40,7 +35,6 @@ export const Settings = () => {
     const hoverBg = 'gray.50';
     const accentColor = 'blue.500';
     const textColor = 'gray.800';
-    const secondaryTextColor = 'gray.500';
 
     const changeLanguage = (lang: string) => {
         i18n.changeLanguage(lang);
@@ -145,9 +139,7 @@ export const Settings = () => {
                     {[
                         { icon: FaUserCircle, label: t('profile'), id: 0 },
                         { icon: FaGlobe, label: t('language'), id: 1 },
-                        { icon: FaBell, label: t('notifications'), id: 2 },
-                        { icon: FaShieldAlt, label: t('privacy_security'), id: 3 },
-                        { icon: FaTrash, label: t('danger_zone'), id: 4, color: "red.500" }
+                        { icon: FaTrash, label: t('danger_zone'), id: 2, color: "red.500" }
                     ].map((item) => (
                         <motion.div key={item.id} variants={tabVariants}>
                             <Button
@@ -184,12 +176,10 @@ export const Settings = () => {
                         <Heading size="md" color={textColor}>
                             {activeTab === 0 && t('profile')}
                             {activeTab === 1 && t('language')}
-                            {activeTab === 2 && t('notifications')}
-                            {activeTab === 3 && t('privacy_security')}
-                            {activeTab === 4 && <Text color="red.500">{t('danger_zone')}</Text>}
+                            {activeTab === 2 && <Text color="red.500">{t('danger_zone')}</Text>}
                         </Heading>
 
-                        {activeTab !== 4 && (
+                        {activeTab !== 2 && (
                             <Button colorScheme="blue" size="md">
                                 {t('save_changes')}
                             </Button>
@@ -257,145 +247,8 @@ export const Settings = () => {
                             </Box>
                         )}
 
-                        {/* Notifications Settings */}
-                        {activeTab === 2 && (
-                            <Box>
-                                <VStack align="stretch">
-                                    <Flex alignItems="center" justifyContent="space-between" mb={4}>
-                                        <Box>
-                                            <Text mb={0} fontWeight="medium" color={textColor}>
-                                                {t('email_notifications')}
-                                            </Text>
-                                            <Text fontSize="sm" color={secondaryTextColor}>
-                                                {t('receive_email_updates')}
-                                            </Text>
-                                        </Box>
-                                        <Switch.Root id="email-alerts" colorScheme="blue">
-                                            <Switch.HiddenInput />
-                                            <Switch.Control />
-                                        </Switch.Root>
-                                    </Flex>
-
-                                    <Flex alignItems="center" justifyContent="space-between" mb={4}>
-                                        <Box>
-                                            <Text mb={0} fontWeight="medium" color={textColor}>
-                                                {t('browser_notifications')}
-                                            </Text>
-                                            <Text fontSize="sm" color={secondaryTextColor}>
-                                                {t('receive_browser_notifications')}
-                                            </Text>
-                                        </Box>
-                                        <Switch.Root id="browser-alerts" colorScheme="blue" defaultChecked>
-                                            <Switch.HiddenInput />
-                                            <Switch.Control />
-                                        </Switch.Root>
-                                    </Flex>
-
-                                    <Flex alignItems="center" justifyContent="space-between" mb={4}>
-                                        <Box>
-                                            <Text mb={0} fontWeight="medium" color={textColor}>
-                                                {t('product_updates')}
-                                            </Text>
-                                            <Text fontSize="sm" color={secondaryTextColor}>
-                                                {t('receive_product_updates')}
-                                            </Text>
-                                        </Box>
-                                        <Switch.Root id="update-alerts" colorScheme="blue" defaultChecked>
-                                            <Switch.HiddenInput />
-                                            <Switch.Control />
-                                        </Switch.Root>
-                                    </Flex>
-                                </VStack>
-                            </Box>
-                        )}
-
-                        {/* Privacy & Security Settings */}
-                        {activeTab === 3 && (
-                            <Box>
-                                <VStack align="stretch">
-                                    <Box mb={4}>
-                                        <Text fontWeight="medium" mb={1} color={textColor}>{t('session_timeout')}</Text>
-                                        <Select.Root
-                                            maxW="400px"
-                                            defaultValue={["30"]}
-                                            collection={createListCollection({
-                                                items: [
-                                                    { label: "15 " + t('minutes'), value: "15" },
-                                                    { label: "30 " + t('minutes'), value: "30" },
-                                                    { label: "1 " + t('hour'), value: "60" },
-                                                    { label: "4 " + t('hours'), value: "240" }
-                                                ]
-                                            })}
-                                        >
-                                            <Select.HiddenSelect />
-                                            <Select.Control>
-                                                <Select.Trigger>
-                                                    <Select.ValueText />
-                                                </Select.Trigger>
-                                                <Select.IndicatorGroup>
-                                                    <Select.Indicator />
-                                                </Select.IndicatorGroup>
-                                            </Select.Control>
-                                            <Portal>
-                                                <Select.Positioner>
-                                                    <Select.Content>
-                                                        {createListCollection({
-                                                            items: [
-                                                                { label: "15 " + t('minutes'), value: "15" },
-                                                                { label: "30 " + t('minutes'), value: "30" },
-                                                                { label: "1 " + t('hour'), value: "60" },
-                                                                { label: "4 " + t('hours'), value: "240" }
-                                                            ]
-                                                        }).items.map((option) => (
-                                                            <Select.Item item={option} key={option.value}>
-                                                                {option.label}
-                                                                <Select.ItemIndicator />
-                                                            </Select.Item>
-                                                        ))}
-                                                    </Select.Content>
-                                                </Select.Positioner>
-                                            </Portal>
-                                        </Select.Root>
-                                        <Text fontSize="sm" color={secondaryTextColor} mt={1}>
-                                            {t('session_timeout_description')}
-                                        </Text>
-                                    </Box>
-
-                                    <Flex alignItems="center" justifyContent="space-between" mb={4}>
-                                        <Box>
-                                            <Text mb={0} fontWeight="medium" color={textColor}>
-                                                {t('two_factor_auth')}
-                                            </Text>
-                                            <Text fontSize="sm" color={secondaryTextColor}>
-                                                {t('two_factor_description')}
-                                            </Text>
-                                        </Box>
-                                        <Checkbox.Root id="two-factor" colorScheme="blue">
-                                            <Checkbox.HiddenInput />
-                                            <Checkbox.Control />
-                                        </Checkbox.Root>
-                                    </Flex>
-
-                                    <Box>
-                                        <IconButton
-                                            bg="transparent"
-                                            _hover={{ bg: 'rgba(0, 0, 0, 0.05)' }}
-                                            _active={{ bg: 'rgba(0, 0, 0, 0.1)' }}
-                                            _focus={{ boxShadow: '0 0 0 3px rgba(66, 153, 225, 0.3)' }}
-                                            aria-label={t('change_password')}
-                                        >
-                                            <Icon as={FaKey} />
-                                        </IconButton>
-                                        <Button colorScheme="blue" variant="outline" ml={2}>
-                                            {t('change_password')}
-                                        </Button>
-                                    </Box>
-                                </VStack>
-                            </Box>
-                        )}
-
                         {/* Danger Zone */}
-                        {activeTab === 4 && (
+                        {activeTab === 2 && (
                             <Box>
                                 <Box
                                     p={4}
@@ -414,19 +267,8 @@ export const Settings = () => {
                                             <Text color="red.700" fontSize="sm">
                                                 {t('delete_all_rooms_warning')}
                                             </Text>
-                                            <IconButton
-                                                mt={3}
-                                                colorScheme="red"
-                                                size="sm"
-                                                onClick={deleteAllRooms}
-                                                loading={isDeleting}
-                                                aria-label={t('delete_all_rooms')}
-                                            >
-                                                <Icon as={FaTrash} />
-                                            </IconButton>
                                             <Button
                                                 mt={3}
-                                                ml={2}
                                                 colorScheme="red"
                                                 size="sm"
                                                 onClick={deleteAllRooms}
@@ -434,42 +276,6 @@ export const Settings = () => {
                                                 loadingText={t('deleting...')}
                                             >
                                                 {t('delete_all_rooms')}
-                                            </Button>
-                                        </Box>
-                                    </HStack>
-                                </Box>
-
-                                <Box
-                                    p={4}
-                                    borderWidth="1px"
-                                    borderColor="red.200"
-                                    borderRadius="md"
-                                    bg="red.50"
-                                >
-                                    <HStack align="flex-start">
-                                        <Icon as={FiInfo} color="red.500" boxSize={5} mt={0.5} />
-                                        <Box>
-                                            <Heading size="sm" color="red.600" mb={1}>
-                                                {t('delete_account')}
-                                            </Heading>
-                                            <Text color="red.700" fontSize="sm">
-                                                {t('delete_account_warning')}
-                                            </Text>
-                                            <IconButton
-                                                mt={3}
-                                                colorScheme="red"
-                                                size="sm"
-                                                aria-label={t('delete_account')}
-                                            >
-                                                <Icon as={FaTrash} />
-                                            </IconButton>
-                                            <Button
-                                                mt={3}
-                                                ml={2}
-                                                colorScheme="red"
-                                                size="sm"
-                                            >
-                                                {t('delete_account')}
                                             </Button>
                                         </Box>
                                     </HStack>

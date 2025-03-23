@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { FiSearch, FiServer, FiTool, FiInfo, FiCopy, FiExternalLink } from 'react-icons/fi';
-
+import { useTranslation } from 'react-i18next';
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
 
@@ -148,6 +148,7 @@ const ToolCard = ({ tool, serverKey, isExpanded, toggleToolExpansion }: { tool: 
 };
 
 export const MCPResourceExplorer: React.FC<ServerListProps> = () => {
+    const { t } = useTranslation();
     const [servers, setServers] = useState<Record<string, Server>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -343,7 +344,7 @@ export const MCPResourceExplorer: React.FC<ServerListProps> = () => {
                     >
                         <Heading size="sm" p={2} bg="gray.50" borderBottom="1px" borderColor="gray.200">
                             <Icon as={FiServer} mr={2} />
-                            Available Servers
+                            {t("available_servers")}
                         </Heading>
                         <VStack
                             align="stretch"

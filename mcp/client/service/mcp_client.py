@@ -10,7 +10,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.types import Tool as mcp_tool
 from mcp.client.stdio import stdio_client
 
-from schemas.mcp import MCPAccess, MCPResponse, MCPToolCall, MCPTool, MCPServer
+from schemas.mcp import MCPAccess, MCPResponse, MCPToolCall, MCPTool, MCPServer, MCPApproval
 from service.bypasser import Bypasser
 
 class MCPClientManager:
@@ -56,12 +56,11 @@ class MCPClientManager:
             "function": {
                 "name": tool.name,
                 "description": tool.description,
-                "parameters": 
-                    {
-                        "type": "object",
-                        "properties": tool.inputSchema["properties"],
-                        "required": tool.inputSchema["required"]
-                    }
+                "parameters": {
+                    "type": "object",
+                    "properties": tool.inputSchema["properties"],
+                    "required": tool.inputSchema.get("required", [])
+                }
             }
         }
         return ollama_tool
@@ -142,19 +141,28 @@ Server purpose: {server_description}"""
 
     async def call_tool(
         self, 
-        approval: List[MCPToolCall]
+        approval: MCPApproval
     ) -> MCPResponse:
         results = []
-        for tool_call in approval:
+        for tool_call in approval.tools_called:
             session = self.servers[tool_call.mcp_server]
             tool_response = await session.call_tool(tool_call.tool_name, tool_call.args)
+            logger.info(f"Tool response: {tool_response}")
             results.append(tool_response.content[0].text)
         
         logger.info(f"Reuslts: {results}")
 
         query = {
             "role": "user",
-            "content": f"Summarize this piece of text: {results}. Keep your response concise and to the point."
+            "content": f"""
+            Given the results {results},
+            
+            Provide an analysis of the result, and answer the user's query
+            {approval.conversation[-1]["content"]}
+            
+            Context for your reference:
+            {approval.conversation[:-1]}
+            """
         }
         
         summarization = self.ollama_client.chat(

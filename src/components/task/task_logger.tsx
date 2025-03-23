@@ -106,19 +106,21 @@ const TaskToolCalls = ({
             {tool.args && Object.keys(tool.args).length > 0 ? (
               <Box ml={2}>
                 <Text fontSize="xs" color="gray.600" mb={1}>Arguments:</Text>
-                {Object.entries(tool.args).map(([key, value], argIndex) => (
-                  <Flex key={argIndex} justify="space-between" align="center" mb={2}>
-                    <Text fontSize="sm" color="gray.700" fontWeight="medium">{key}:</Text>
-                    <Input
-                      size="sm"
-                      width="60%"
-                      value={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                      onChange={(e) => onArgChange(toolIndex, key, e.target.value)}
-                      fontFamily="mono"
-                      disabled={disabled}
-                    />
-                  </Flex>
-                ))}
+                {Object.entries(tool.args)
+                  .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+                  .map(([key, value], argIndex) => (
+                    <Flex key={argIndex} justify="space-between" align="center" mb={2}>
+                      <Text fontSize="sm" color="gray.700" fontWeight="medium">{key}:</Text>
+                      <Input
+                        size="sm"
+                        width="60%"
+                        value={typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                        onChange={(e) => onArgChange(toolIndex, key, e.target.value)}
+                        fontFamily="mono"
+                        disabled={disabled}
+                      />
+                    </Flex>
+                  ))}
               </Box>
             ) : (
               <Text fontSize="sm" color="gray.600" fontStyle="italic">No arguments provided</Text>
@@ -489,12 +491,17 @@ const TaskLogger: React.FC<TaskLoggerProps> = memo(function TaskLogger({
         onDeny?.(taskObj.id, editedToolCalls);
       }
 
+      console.log("editedToolCalls", editedToolCalls)
+
       // Make API call for approval
       if (action === 'approve') {
         const response = await fetch(`/mcp/api/app/approve`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(editedToolCalls)
+          body: JSON.stringify({
+            conversation: taskObj.conversation,
+            tools_called: editedToolCalls
+          })
         });
 
         if (!response.ok) {

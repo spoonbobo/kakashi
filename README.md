@@ -27,5 +27,4 @@ Visit `kakashi-dev.com` to open the web application.
 Login with default account: ID `admin` and password `admin1234`.
 
 ## Supported MCP Servers
-* weather
-* download from web
+All MCP servers can be explored at `learn->mcp explorer`.

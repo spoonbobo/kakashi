@@ -33,6 +33,10 @@ class MCPToolCall(BaseModel):
     args: Dict[str, Any]
     room_id: str
 
+class MCPApproval(BaseModel):
+    conversation: List[Dict[str, Any]]
+    tools_called: List[MCPToolCall]
+
 class MCPResponse(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     sender: str

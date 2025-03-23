@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { io, Socket } from "socket.io-client";
 import { Tooltip } from "@/components/tooltip"
 import { Box, Text, Flex, VStack, Spinner, Center } from "@chakra-ui/react";
@@ -7,6 +7,7 @@ import { useAuth } from "@/auth/context";
 import { v4 as uuidv4 } from 'uuid';
 import { ChatInput } from "@/components/chat/chat_input";
 import { useTranslation } from 'react-i18next';
+import Toast, { showSuccessToast, showErrorToast, showInfoToast } from '@/components/toast/toast';
 
 const MotionBox = motion.create(Box);
 const MotionFlex = motion.create(Flex);
@@ -25,9 +26,17 @@ interface User {
   username: string;
 }
 
-const LOCAL_STORAGE_KEY_PREFIX = 'chat_messages_';
+interface RoomData {
+  name: string;
+  id: string;
+  created_at: string;
+}
 
+const LOCAL_STORAGE_KEY_PREFIX = 'chat_messages_';
 const MAX_CACHED_MESSAGES = 100;
+const FETCH_DEBOUNCE_TIME = 500;
+const RECONNECTION_ATTEMPTS = 5;
+const SOCKET_TIMEOUT = 15000; // Increased timeout
 
 const messageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -46,13 +55,22 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [roomName, setRoomName] = useState<string>("Chat Room");
+  // const toast = useToast();
 
+  // Socket and room state management
   const [retryCount, setRetryCount] = useState(0);
-
-  // Use the roomId from props only, not from localStorage
   const roomIdRef = useRef<string | undefined>(roomId);
   const socketRef = useRef<Socket | null>(null);
+  const [receivedRoomData, setReceivedRoomData] = useState(false);
+  const [lastFetchedRoomId, setLastFetchedRoomId] = useState<string | null>(null);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [roomData, setRoomData] = useState<RoomData | null>(null);
+  const fetchingRef = useRef(false);
 
+  // Memoize agents to prevent unnecessary re-renders
+  const agents = useMemo(() => [{ id: 'agent', username: 'agent' }], []);
+
+  // Create system message with memoization
   const createSystemMessage = useCallback((text: string) => ({
     id: `system-${Date.now()}-${uuidv4()}`,
     text,
@@ -60,48 +78,82 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     timestamp: new Date()
   }), []);
 
-  const [agents] = useState<User[]>([
-    { id: 'agent', username: 'agent' },
-  ]);
-
-  // Add this function to fetch room details
+  // Optimized fetchRoomDetails function
   const fetchRoomDetails = useCallback(async (roomIdToFetch: string) => {
-    try {
-      console.log("Fetching room details for:", roomIdToFetch);
-      const response = await fetch(`/api/chat/get_room?id=${roomIdToFetch}`);
-      if (response.ok) {
+    // Skip if already fetching, recently fetched, or we have socket data
+    if (
+      fetchingRef.current ||
+      roomIdToFetch === lastFetchedRoomId ||
+      (receivedRoomData && roomData?.id === roomIdToFetch)
+    ) {
+      return;
+    }
+
+    // Clear any pending fetch timeout
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+      fetchTimeoutRef.current = null;
+    }
+
+    // Set a flag to prevent concurrent fetches
+    fetchingRef.current = true;
+
+    // Set a timeout to prevent rapid consecutive fetches
+    fetchTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log("Fetching room details for:", roomIdToFetch);
+        setLastFetchedRoomId(roomIdToFetch);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const response = await fetch(`/api/chat/get_room?id=${roomIdToFetch}`, {
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Error response: ${response.status}`);
+        }
+
         const data = await response.json();
-        console.log("Room data received:", data);
-        // Check if data.name exists and is not empty before using it
+
+        // Store the complete room data
+        setRoomData(data);
+
+        // Update room name if needed
         if (data.name && data.name.trim() !== '') {
           setRoomName(data.name);
-          console.log("Room name set to:", data.name);
         } else {
           setRoomName(`${t('chat_room')} #${roomIdToFetch.substring(0, 8)}`);
-          console.log("No valid name in data, using fallback:", `${t('chat_room')} #${roomIdToFetch.substring(0, 8)}`);
         }
-      } else {
-        console.log("Error response from room API:", response.status);
-        setRoomName(`${t('chat_room')} #${roomIdToFetch.substring(0, 8)}`);
+      } catch (error) {
+        console.error("Error fetching room details:", error);
+        // Only set fallback room name if we don't already have one
+        if (!roomName || roomName === "Chat Room") {
+          setRoomName(`${t('chat_room')} #${roomIdToFetch.substring(0, 8)}`);
+        }
+      } finally {
+        fetchingRef.current = false;
+        if (fetchTimeoutRef.current) {
+          clearTimeout(fetchTimeoutRef.current);
+          fetchTimeoutRef.current = null;
+        }
       }
-    } catch (error) {
-      console.error("Error fetching room details:", error);
-      setRoomName(`${t('chat_room')} #${roomIdToFetch.substring(0, 8)}`);
-    }
-  }, [t]);
+    }, FETCH_DEBOUNCE_TIME);
 
-  // Add a useEffect that runs on component mount to fetch room details
-  useEffect(() => {
-    // Only run this on initial mount if we have a roomId
-    if (roomIdRef.current) {
-      console.log("Initial mount - fetching room details for:", roomIdRef.current);
-      fetchRoomDetails(roomIdRef.current);
-    }
-  }, [fetchRoomDetails]);
+    return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = null;
+      }
+      fetchingRef.current = false;
+    };
+  }, [t, lastFetchedRoomId, receivedRoomData, roomData, roomName]);
 
-  // Add this effect to check URL for roomId when component mounts or becomes visible
+  // Load cached messages on initial mount
   useEffect(() => {
-    // Check URL for roomId parameter
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       const roomIdFromUrl = url.searchParams.get('roomId');
@@ -110,109 +162,133 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
         console.log("Found roomId in URL:", roomIdFromUrl);
         roomIdRef.current = roomIdFromUrl;
 
-        // Fetch room details
-        fetchRoomDetails(roomIdFromUrl);
-
-        // Reconnect socket with new roomId
-        if (socketRef.current) {
-          socketRef.current.disconnect();
-          socketRef.current = null;
-          setRetryCount(prev => prev + 1); // Trigger socket reconnection
-        }
-
         // Load cached messages for this room
         const cachedMessages = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdFromUrl}`);
         if (cachedMessages) {
-          setMessages(JSON.parse(cachedMessages));
+          try {
+            setMessages(JSON.parse(cachedMessages));
+          } catch (e) {
+            console.error("Error parsing cached messages:", e);
+            localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdFromUrl}`);
+            setMessages([]);
+          }
         } else {
-          setMessages([]); // Clear messages when switching to a new room
+          setMessages([]);
         }
       }
     }
-  }, [fetchRoomDetails]);
 
-  // Add this effect to listen for visibility changes (tab switching)
+    // Cleanup function
+    return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = null;
+      }
+      fetchingRef.current = false;
+    };
+  }, []);
+
+  // Visibility change handler with improved error handling
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // When tab becomes visible again, check URL for roomId
-        const url = new URL(window.location.href);
-        const roomIdFromUrl = url.searchParams.get('roomId');
+        try {
+          const url = new URL(window.location.href);
+          const roomIdFromUrl = url.searchParams.get('roomId');
 
-        if (roomIdFromUrl && roomIdFromUrl !== roomIdRef.current) {
-          console.log("Tab visible again, updating roomId from URL:", roomIdFromUrl);
-          roomIdRef.current = roomIdFromUrl;
+          if (roomIdFromUrl && roomIdFromUrl !== roomIdRef.current) {
+            console.log("Tab visible again, updating roomId from URL:", roomIdFromUrl);
+            roomIdRef.current = roomIdFromUrl;
 
-          // Fetch room details
-          fetchRoomDetails(roomIdFromUrl);
+            // Reset socket connection
+            if (socketRef.current) {
+              socketRef.current.disconnect();
+              socketRef.current = null;
+              setRetryCount(prev => prev + 1);
+            }
 
-          // Reconnect socket with new roomId
-          if (socketRef.current) {
-            socketRef.current.disconnect();
-            socketRef.current = null;
-            setRetryCount(prev => prev + 1); // Trigger socket reconnection
+            // Load cached messages
+            const cachedMessages = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdFromUrl}`);
+            if (cachedMessages) {
+              try {
+                setMessages(JSON.parse(cachedMessages));
+              } catch (e) {
+                console.error("Error parsing cached messages:", e);
+                localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdFromUrl}`);
+                setMessages([]);
+              }
+            } else {
+              setMessages([]);
+            }
+          } else if (socketRef.current && !socketRef.current.connected && roomIdRef.current) {
+            // Reconnect if socket is disconnected but should be connected
+            console.log("Tab visible again, reconnecting socket");
+            setRetryCount(prev => prev + 1);
           }
-
-          // Load cached messages for this room
-          const cachedMessages = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdFromUrl}`);
-          if (cachedMessages) {
-            setMessages(JSON.parse(cachedMessages));
-          } else {
-            setMessages([]); // Clear messages when switching to a new room
-          }
+        } catch (error) {
+          console.error("Error in visibility change handler:", error);
         }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchRoomDetails]);
+  }, []);
 
-  // Save messages to localStorage whenever they change (optimized)
+  // Save messages to localStorage with error handling
   useEffect(() => {
-    if (roomIdRef.current) {
-      const messagesToCache = messages.slice(-MAX_CACHED_MESSAGES);
-      localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdRef.current}`, JSON.stringify(messagesToCache));
+    if (roomIdRef.current && messages.length > 0) {
+      try {
+        const messagesToCache = messages.slice(-MAX_CACHED_MESSAGES);
+        localStorage.setItem(`${LOCAL_STORAGE_KEY_PREFIX}${roomIdRef.current}`, JSON.stringify(messagesToCache));
+      } catch (error) {
+        console.error("Error saving messages to localStorage:", error);
+      }
     }
   }, [messages]);
 
+  // Socket connection effect with improved reliability
   useEffect(() => {
+    // Early returns for invalid states
     if (!isAuthenticated || !currentUser?.token) {
       setConnectionError('Please log in to join the chat');
       setLoading(false);
       return;
     }
 
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-
-    // If no roomId is provided, just show the interface without connecting
     if (!roomIdRef.current) {
       setLoading(false);
       setRoomName(t('chat'));
       return;
     }
 
-    // Fetch room details immediately, don't wait for socket connection
-    console.log("Socket effect - fetching room details for:", roomIdRef.current);
-    fetchRoomDetails(roomIdRef.current);
+    // CRITICAL FIX: Don't disconnect existing socket if it's already connected to the same room
+    if (socketRef.current) {
+      const currentSocketRoom = socketRef.current.auth?.roomId;
+      if (currentSocketRoom === roomIdRef.current) {
+        console.log("Socket already connected to room:", roomIdRef.current);
+        return; // Skip reconnection if already connected to the same room
+      }
 
+      console.log("Cleaning up existing socket connection");
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
+    // Reset state for new connection
+    setReceivedRoomData(false);
     setLoading(true);
-    console.log("Attempting to connect to socket server...");
-    console.log("Room ID:", roomIdRef.current);
 
-    // Determine the correct socket server URL
+    console.log("Attempting to connect to socket server for room:", roomIdRef.current);
+
+    // Determine socket URL
     const socketUrl = process.env.NODE_ENV === 'production'
       ? window.location.origin
       : `${window.location.protocol}//${window.location.hostname}:3001`;
 
-    console.log("Socket URL:", socketUrl);
-
+    // Create socket connection with explicit reconnection settings
     const socket = io(socketUrl, {
       path: '/socket.io/chat/',
       auth: {
@@ -221,77 +297,168 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
       },
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
+      reconnection: true, // Ensure reconnection is enabled
       timeout: 10000,
       transports: ['websocket', 'polling'],
     });
 
     socketRef.current = socket;
 
+    // Socket event handlers
     socket.on('connect', () => {
       console.log("Socket connected successfully!");
       setConnectionError(null);
       setLoading(false);
-
-      // Fetch room details after connection
-      if (roomIdRef.current) {
-        console.log("Fetching room details after connection for:", roomIdRef.current);
-        fetchRoomDetails(roomIdRef.current);
-      }
+      showSuccessToast("Connected to chat room");
     });
 
     socket.on('room_created', (data: { roomId: string }) => {
       roomIdRef.current = data.roomId;
       setRoomName(`${t('chat_room')} #${data.roomId.substring(0, 8)}`);
-      const url = new URL(window.location.href);
-      url.searchParams.set('roomId', data.roomId);
-      window.history.pushState({}, '', url.toString());
+
+      // Update URL
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('roomId', data.roomId);
+        window.history.pushState({}, '', url.toString());
+      } catch (error) {
+        console.error("Error updating URL:", error);
+      }
     });
 
-    socket.on('room_data', (data: { messages: ChatMessage[], users: User[] }) => {
-      setMessages(data.messages || []);
-      setUsers(data.users || []);
+    socket.on('room_data', (data: {
+      messages: ChatMessage[],
+      users: User[],
+      room?: RoomData
+    }) => {
+      try {
+        if (Array.isArray(data.messages)) {
+          setMessages(data.messages);
+        }
+
+        if (Array.isArray(data.users)) {
+          setUsers(data.users);
+        }
+
+        // Mark that we've received data from socket
+        setReceivedRoomData(true);
+
+        // Update room data if available
+        if (data.room) {
+          setRoomData(data.room);
+          setLastFetchedRoomId(data.room.id);
+
+          if (data.room.name && data.room.name.trim() !== '') {
+            setRoomName(data.room.name);
+          }
+        } else if (roomIdRef.current) {
+          setRoomName(`${t('chat_room')} #${roomIdRef.current.substring(0, 8)}`);
+        }
+      } catch (error) {
+        console.error("Error processing room_data event:", error);
+      }
     });
 
     socket.on('connect_error', (err) => {
       console.error("Socket connection error:", err);
       setConnectionError(`Connection error: ${err.message}`);
       setLoading(false);
+      showErrorToast(`Connection error: ${err.message}`);
     });
 
     socket.on('error', (err) => {
       console.error("Socket error:", err);
       setConnectionError(`Socket error: ${err.message || 'Unknown error'}`);
+      showErrorToast(`Socket error: ${err.message || 'Unknown error'}`);
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
+      console.log("Socket disconnected, reason:", reason);
       setConnectionError('Disconnected from server.');
+      if (reason !== 'io client disconnect') {
+        showInfoToast("Disconnected from chat room");
+      }
     });
 
     socket.on('message', (message: ChatMessage) => {
-      setMessages(prev => [...prev, message]);
+      try {
+        setMessages(prev => [...prev, message]);
+      } catch (error) {
+        console.error("Error processing message event:", error);
+      }
     });
 
     socket.on('user_joined', (user: User) => {
-      if (user.username.startsWith('agent')) {
-        return;
+      try {
+        if (user.username.startsWith('agent')) {
+          return;
+        }
+
+        // Check if user already exists in the users array
+        setUsers(prev => {
+          if (!prev.some(u => u.id === user.id)) {
+            return [...prev, user];
+          }
+          return prev;
+        });
+
+        setMessages(prevMsgs => [...prevMsgs, createSystemMessage(`${user.username} joined the chat`)]);
+      } catch (error) {
+        console.error("Error processing user_joined event:", error);
       }
-      setUsers(prev => [...prev, user]);
-      setMessages(prevMsgs => [...prevMsgs, createSystemMessage(`${user.username} joined the chat`)]);
     });
 
     socket.on('user_left', (userId: string) => {
-      setUsers(prev => prev.filter(u => u.id !== userId));
-      setMessages(prevMsgs => [...prevMsgs, createSystemMessage(`A user left the chat`)]);
+      try {
+        // Find the username before removing from users list
+        const leavingUser = users.find(u => u.id === userId);
+        const username = leavingUser ? leavingUser.username : 'A user';
+
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        setMessages(prevMsgs => [...prevMsgs, createSystemMessage(`${username} left the chat`)]);
+      } catch (error) {
+        console.error("Error processing user_left event:", error);
+      }
     });
 
-    return () => {
-      console.log("Disconnecting socket...");
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [isAuthenticated, currentUser, retryCount, createSystemMessage, t, fetchRoomDetails]);
+    // CRITICAL FIX: Add reconnect event handler
+    socket.io.on("reconnect_attempt", (attempt) => {
+      console.log(`Socket reconnection attempt ${attempt}`);
+      showInfoToast(`Reconnecting to chat room (attempt ${attempt})`);
+    });
 
-  // Memoize message rendering function to prevent unnecessary re-renders
+    socket.io.on("reconnect", () => {
+      console.log("Socket reconnected successfully");
+      showSuccessToast("Reconnected to chat room");
+    });
+
+    socket.io.on("reconnect_error", (error) => {
+      console.error("Socket reconnection error:", error);
+      showErrorToast("Failed to reconnect to chat room");
+    });
+
+    socket.io.on("reconnect_failed", () => {
+      console.error("Socket reconnection failed after all attempts");
+      setConnectionError("Connection failed after multiple attempts. Please refresh the page.");
+      showErrorToast("Connection failed after multiple attempts. Please refresh the page.");
+    });
+
+    // Fetch room details if needed
+    if (!receivedRoomData && roomIdRef.current !== lastFetchedRoomId) {
+      fetchRoomDetails(roomIdRef.current);
+    }
+
+    // Cleanup function
+    return () => {
+      if (socketRef.current) {
+        console.log("Disconnecting socket in cleanup...");
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [isAuthenticated, currentUser, retryCount, createSystemMessage, t, roomIdRef.current, showSuccessToast, showErrorToast, showInfoToast, users, fetchRoomDetails, lastFetchedRoomId, receivedRoomData]);
+
+  // Memoize message rendering function
   const renderMessage = useCallback((msg: ChatMessage) => {
     const isCurrentUser = msg.sender === currentUser?.username || msg.sender === currentUser?.id?.toString();
     const isToolCall = msg.is_tool_call;
@@ -347,30 +514,29 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
     );
   }, [currentUser?.username, currentUser?.id]);
 
-  // Optimize scrolling behavior
+  // Optimized scrolling behavior
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, []);
 
-  // Replace the previous useEffect for scrolling with a more efficient one
   useEffect(() => {
-    // Only scroll if we're already near the bottom or if the last message is from the current user
     const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
+    if (scrollContainer && messages.length > 0) {
       const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
       const lastMessage = messages[messages.length - 1];
       const isOwnMessage = lastMessage && (lastMessage.sender === currentUser?.username || lastMessage.sender === currentUser?.id?.toString());
 
       if (isNearBottom || isOwnMessage) {
-        scrollToBottom();
+        // Use requestAnimationFrame for smoother scrolling
+        requestAnimationFrame(scrollToBottom);
       }
     }
   }, [messages, currentUser?.username, currentUser?.id, scrollToBottom]);
 
+  // MCP integration with improved error handling
   const accessMCP = useCallback(async (agentName: string, messageText: string) => {
-    // Add error handling and prevent UI blocking
     try {
       const messageHistory = messages.slice(-10).map(msg => ({
         sender: msg.sender,
@@ -386,9 +552,8 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
         room_id: roomIdRef.current
       };
 
-      // Set a timeout to prevent long-running requests from blocking the UI
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const response = await fetch(`/mcp/api/app/access`, {
         method: 'POST',
@@ -403,81 +568,129 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('Agent response:', data);
-      return data;
+      return await response.json();
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.warn('Agent request timed out');
+        showInfoToast(`Request to agent ${agentName} timed out.`);
       } else {
         console.error('Error accessing MCP:', error);
+        showErrorToast(`Error communicating with agent ${agentName}.`);
       }
-      // Don't rethrow - we don't want to crash the chat experience
     }
   }, [messages, currentUser?.username]);
 
+  // Send message function with improved error handling
   const sendMessage = useCallback(() => {
-    if (socketRef.current && message.trim()) {
-      const agentMentionRegex = /@(agent\S*)\b/g;
-      const mentionMatches = [...message.matchAll(agentMentionRegex)];
+    if (!socketRef.current || !socketRef.current.connected) {
+      showErrorToast("Cannot send message: Not connected to chat room");
+      return;
+    }
 
-      mentionMatches.forEach(match => {
-        const agentName = match[1];
-        accessMCP(agentName, message);
-      });
+    if (message.trim()) {
+      try {
+        const agentMentionRegex = /@(agent\S*)\b/g;
+        const mentionMatches = [...message.matchAll(agentMentionRegex)];
 
-      socketRef.current.emit('message', { text: message, sender: currentUser?.username });
-      setMessage("");
+        mentionMatches.forEach(match => {
+          const agentName = match[1];
+          accessMCP(agentName, message);
+        });
+
+        socketRef.current.emit('message', {
+          id: uuidv4(),
+          text: message,
+          sender: currentUser?.username,
+          timestamp: new Date()
+        });
+
+        setMessage("");
+      } catch (error) {
+        console.error("Error sending message:", error);
+        showErrorToast(`Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   }, [message, currentUser?.username, accessMCP]);
 
-  // Modify the handleRoomSelection function
+  // Room selection event handler with improved reliability
   useEffect(() => {
     const handleRoomSelection = (event: CustomEvent) => {
       if (event.detail && event.detail !== roomIdRef.current) {
-        const newRoomId = event.detail;
-        console.log("Room selection event - changing to room:", newRoomId);
+        try {
+          const newRoomId = event.detail;
+          console.log("Room selection event - changing to room:", newRoomId);
 
-        roomIdRef.current = newRoomId;
+          // Update the ref first
+          roomIdRef.current = newRoomId;
 
-        // Explicitly fetch room details here
-        console.log("Room selection event - fetching room details for:", newRoomId);
-        fetchRoomDetails(newRoomId);
+          // Reset states
+          setReceivedRoomData(false);
+          setLastFetchedRoomId(null);
 
-        setRetryCount(prev => prev + 1); // Trigger socket reconnection
+          // Load cached messages
+          const cachedMessages = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${newRoomId}`);
+          if (cachedMessages) {
+            try {
+              setMessages(JSON.parse(cachedMessages));
+            } catch (e) {
+              console.error("Error parsing cached messages:", e);
+              localStorage.removeItem(`${LOCAL_STORAGE_KEY_PREFIX}${newRoomId}`);
+              setMessages([]);
+            }
+          } else {
+            setMessages([]);
+          }
 
-        // Load cached messages for this room
-        const cachedMessages = localStorage.getItem(`${LOCAL_STORAGE_KEY_PREFIX}${newRoomId}`);
-        if (cachedMessages) {
-          setMessages(JSON.parse(cachedMessages));
-        } else {
-          setMessages([]); // Clear messages when switching to a new room
+          // Update URL
+          const url = new URL(window.location.href);
+          url.searchParams.set('roomId', newRoomId);
+          window.history.pushState({}, '', url.toString());
+
+          // Force disconnect and reconnect with new room ID
+          if (socketRef.current) {
+            socketRef.current.disconnect();
+            socketRef.current = null;
+          }
+
+          // Trigger reconnection after a short delay
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+          }, 100);
+        } catch (error) {
+          console.error("Error in room selection handler:", error);
+          showErrorToast("Failed to switch chat rooms. Please try again.");
         }
-
-        // Update URL to reflect the new room
-        const url = new URL(window.location.href);
-        url.searchParams.set('roomId', newRoomId);
-        window.history.pushState({}, '', url.toString());
       }
     };
 
     window.addEventListener('roomChange', handleRoomSelection as EventListener);
-
     return () => {
       window.removeEventListener('roomChange', handleRoomSelection as EventListener);
     };
-  }, [fetchRoomDetails]);
+  }, []);
 
-  // Add this effect to monitor roomName changes
-  useEffect(() => {
-    console.log("Room name state changed to:", roomName);
-  }, [roomName]);
-
+  // Render UI based on state
   if (loading) return <Center height="100%"><Spinner size="xl" color="blue.500" /></Center>;
   if (!isAuthenticated) return <Box p={4}>Please log in to join the chat</Box>;
-  if (connectionError) return <Center height="100%" p={4}><Text>{connectionError}</Text></Center>;
+  if (connectionError) {
+    return (
+      <Center height="100%" p={4} flexDirection="column">
+        <Text mb={4}>{connectionError}</Text>
+        <Box
+          as="button"
+          bg="blue.500"
+          color="white"
+          px={4}
+          py={2}
+          borderRadius="md"
+          onClick={() => setRetryCount(prev => prev + 1)}
+        >
+          Retry Connection
+        </Box>
+      </Center>
+    );
+  }
 
-  // Show a different UI when no room is selected
   if (!roomIdRef.current) {
     return (
       <Flex direction="column" width="100%" height="100%" overflow="hidden" px={20} justifyContent="center" alignItems="center">
@@ -489,6 +702,8 @@ export const ChatRoom = React.memo(({ roomId }: { roomId?: string }) => {
 
   return (
     <Flex direction="column" width="100%" height="100%" overflow="hidden" px={20}>
+      <Toast />
+
       <Flex direction="column" px={6} py={4} borderBottom="1px solid" borderColor="gray.200">
         <Text fontSize="xl" fontWeight="bold">
           {roomName} {roomIdRef.current && <Text as="span" color="gray.500" fontSize="md">(ID: {roomIdRef.current.substring(0, 8)})</Text>}

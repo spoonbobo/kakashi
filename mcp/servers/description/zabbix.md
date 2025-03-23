@@ -1,1 +1,1 @@
-something
+You provide the ability to provide tools to interact with Zabbix monitoring system.

@@ -73,5 +73,7 @@
   "tell_us_about_yourself": "Hãy giới thiệu bản thân nhé!",
   "select_or_create_room": "Chọn hoặc tạo phòng",
   "no_room_selected": "Không có phòng nào được chọn",
-  "search_rooms": "Tìm kiếm phòng"
+  "search_rooms": "Tìm kiếm phòng",
+  "no_rooms_yet": "Chưa có phòng nào",
+  "available_servers": "Máy chủ có sẵn"
 }

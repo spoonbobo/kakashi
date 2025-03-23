@@ -73,5 +73,7 @@
     "tell_us_about_yourself": "简单介绍自己吧!",
     "select_or_create_room": "选择或创建房间",
     "no_room_selected": "没有选择房间",
-    "search_rooms": "搜索房间"
+    "search_rooms": "搜索房间",
+    "no_rooms_yet": "还没有聊天室",
+    "available_servers": "可用服务器"
   }

@@ -5,8 +5,7 @@ from fastapi import Request
 import requests
 from fastapi.routing import APIRouter
 from loguru import logger
-
-from schemas.mcp import MCPAccess, MCPToolCall
+from schemas.mcp import MCPAccess, MCPApproval
 from service.app_client import AppClient
 
 router = APIRouter()
@@ -49,7 +48,7 @@ async def access(request: Request, access: MCPAccess):
     return "ok"
 
 @router.post("/api/app/approve")
-async def approve(request: Request, approval: List[MCPToolCall]):
+async def approve(request: Request, approval: MCPApproval):
     logger.info(f"Approving task: {approval}")
     
     client_url = os.getenv("CLIENT_URL", "")
@@ -62,7 +61,7 @@ async def approve(request: Request, approval: List[MCPToolCall]):
         },
     )
     token = response.json()["token"]
-    room_id = approval[0].room_id
+    room_id = approval.tools_called[0].room_id
 
     app_client = AppClient(room_id, token)
     await app_client.disconnect()
